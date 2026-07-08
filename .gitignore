@@ -1,0 +1,22 @@
+# env
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+db.sqlite3
+
+# Node
+node_modules/
+dist/
+frontend/dist/
+
+# Editors / OS
+.vscode/
+.DS_Store
+
+# Docker
+pgdata/
