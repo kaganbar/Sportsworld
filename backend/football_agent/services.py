@@ -3,6 +3,7 @@ import logging
 from ai_common.service import AnalysisUnavailable, call_agent
 from games import services as game_queries
 from games.models import Game
+from translations.service import translate
 
 from .models import MatchAnalysis
 from .schemas import FootballAnalysis, Probabilities
@@ -24,18 +25,21 @@ exactly 100."""
 
 LANGUAGE_INSTRUCTIONS = {
     "en": "",
-    "he": "\n\nWrite the summary and key_factors in Hebrew (עברית). Keep team and player names in their original Latin spelling.",
+    "he": "\n\nWrite the summary and key_factors in Hebrew (עברית). Use the Hebrew team and player names exactly as given in the context — do not use English/Latin spellings.",
 }
 
 
-def _build_match_context(game: Game) -> dict:
+def _build_match_context(game: Game, language: str = "en") -> dict:
+    def tr(text):
+        return translate(text, language)
+
     def results(qs):
         return [
             {
                 "date": str(r.date),
-                "competition": r.competition,
-                "home_team": r.home_team.name,
-                "away_team": r.away_team.name,
+                "competition": tr(r.competition),
+                "home_team": tr(r.home_team.name),
+                "away_team": tr(r.away_team.name),
                 "score": f"{r.home_score}-{r.away_score}",
             }
             for r in qs
@@ -43,26 +47,26 @@ def _build_match_context(game: Game) -> dict:
 
     def injuries(team):
         return [
-            {"player": i.player.name, "position": i.player.position, "status": i.status, "reason": i.reason}
+            {"player": tr(i.player.name), "position": i.player.position, "status": i.status, "reason": i.reason}
             for i in team.injuries.select_related("player")
         ]
 
     return {
         "fixture": {
-            "competition": game.competition,
+            "competition": tr(game.competition),
             "kickoff": game.kickoff.isoformat(),
-            "venue": game.venue,
-            "home_team": game.home_team.name,
-            "away_team": game.away_team.name,
+            "venue": tr(game.venue),
+            "home_team": tr(game.home_team.name),
+            "away_team": tr(game.away_team.name),
         },
         "home_team": {
-            "name": game.home_team.name,
+            "name": tr(game.home_team.name),
             "recent_form": results(game_queries.recent_results(game.home_team)),
             "form_stats": game_queries.form_stats(game.home_team),
             "injuries": injuries(game.home_team),
         },
         "away_team": {
-            "name": game.away_team.name,
+            "name": tr(game.away_team.name),
             "recent_form": results(game_queries.recent_results(game.away_team)),
             "form_stats": game_queries.form_stats(game.away_team),
             "injuries": injuries(game.away_team),
@@ -125,7 +129,7 @@ def get_or_create_analysis(game: Game, language: str = "en") -> MatchAnalysis:
     if existing:
         return existing
 
-    context = _build_match_context(game)
+    context = _build_match_context(game, language)
 
     logger.info("Requesting football analysis for game %s (%s, lang=%s)", game.id, game, language)
     analysis, model_label = call_agent(

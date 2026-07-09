@@ -4,6 +4,7 @@ import BasketballGameDetail from "./pages/BasketballGameDetail";
 import BasketballGames from "./pages/BasketballGames";
 import FootballGames from "./pages/FootballGames";
 import GameDetail from "./pages/GameDetail";
+import OtherSports from "./pages/OtherSports";
 import SportSelect from "./pages/SportSelect";
 import TennisMatchDetail from "./pages/TennisMatchDetail";
 import TennisMatches from "./pages/TennisMatches";
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/basketball/games/:id" element={<BasketballGameDetail />} />
         <Route path="/tennis" element={<TennisMatches />} />
         <Route path="/tennis/matches/:id" element={<TennisMatchDetail />} />
+        <Route path="/other-sports" element={<OtherSports />} />
       </Routes>
     </BrowserRouter>
   );

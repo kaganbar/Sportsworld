@@ -1,3 +1,5 @@
+import type { Lang } from "../i18n";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export interface Team {
@@ -18,6 +20,7 @@ export interface Game {
   away_team: Team;
   home_score: number | null;
   away_score: number | null;
+  minute: number | null;
 }
 
 export interface LineupEntry {
@@ -87,8 +90,10 @@ export class ApiError extends Error {
   }
 }
 
-export const fetchTodaysGames = () => get<Game[]>("/api/games/today/?sport=football");
-export const fetchGameDetail = (id: string) => get<GameDetail>(`/api/games/${id}/`);
+export const fetchTodaysGames = (lang: Lang = "en") =>
+  get<Game[]>(`/api/games/today/?sport=football&lang=${lang}`);
+export const fetchGameDetail = (id: string, lang: Lang = "en") =>
+  get<GameDetail>(`/api/games/${id}/?lang=${lang}`);
 export const fetchAnalysis = (id: string, lang: "en" | "he" = "en") =>
   get<Analysis>(`/api/games/${id}/analysis/?lang=${lang}`);
 
@@ -119,9 +124,10 @@ export interface BasketballAnalysis {
   created_at: string;
 }
 
-export const fetchBasketballGames = () => get<Game[]>("/api/games/today/?sport=basketball");
-export const fetchBasketballGameDetail = (id: string) =>
-  get<BasketballGameDetail>(`/api/basketball/games/${id}/`);
+export const fetchBasketballGames = (lang: Lang = "en") =>
+  get<Game[]>(`/api/games/today/?sport=basketball&lang=${lang}`);
+export const fetchBasketballGameDetail = (id: string, lang: Lang = "en") =>
+  get<BasketballGameDetail>(`/api/basketball/games/${id}/?lang=${lang}`);
 export const fetchBasketballAnalysis = (id: string, lang: "en" | "he" = "en") =>
   get<BasketballAnalysis>(`/api/basketball/games/${id}/analysis/?lang=${lang}`);
 
@@ -187,8 +193,9 @@ export interface TennisAnalysis {
   created_at: string;
 }
 
-export const fetchTennisMatches = () => get<TennisMatch[]>("/api/tennis/matches/today/");
-export const fetchTennisMatchDetail = (id: string) =>
-  get<TennisMatchDetail>(`/api/tennis/matches/${id}/`);
+export const fetchTennisMatches = (lang: Lang = "en") =>
+  get<TennisMatch[]>(`/api/tennis/matches/today/?lang=${lang}`);
+export const fetchTennisMatchDetail = (id: string, lang: Lang = "en") =>
+  get<TennisMatchDetail>(`/api/tennis/matches/${id}/?lang=${lang}`);
 export const fetchTennisAnalysis = (id: string, lang: "en" | "he" = "en") =>
   get<TennisAnalysis>(`/api/tennis/matches/${id}/analysis/?lang=${lang}`);

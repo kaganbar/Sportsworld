@@ -1,8 +1,13 @@
-import { CSSProperties, ReactNode } from "react";
+import { CSSProperties, ReactNode, Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 
 import { LangToggle, TKey, useLang } from "../i18n";
 import { SportKey, sportsTheme } from "../theme/sportsTheme";
+
+// Lazy-imported so three.js/@react-three/fiber ship as their own chunk,
+// fetched only when a themed sport page actually renders — not part of the
+// main bundle's initial parse/execute.
+const SportBackgroundCanvas = lazy(() => import("../three/SportBackgroundCanvas"));
 
 // Sets the per-sport CSS variables; everything inside styles itself off them.
 export default function ThemeLayout({
@@ -25,6 +30,9 @@ export default function ThemeLayout({
         } as CSSProperties
       }
     >
+      <Suspense fallback={null}>
+        <SportBackgroundCanvas sport={sport} />
+      </Suspense>
       <header className="sport-header">
         <Link to="/" className="brand">
           SportsWorld

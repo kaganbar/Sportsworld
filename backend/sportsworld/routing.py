@@ -1,0 +1,4 @@
+from games.routing import websocket_urlpatterns as games_websocket_urlpatterns
+from tennis.routing import websocket_urlpatterns as tennis_websocket_urlpatterns
+
+websocket_urlpatterns = games_websocket_urlpatterns + tennis_websocket_urlpatterns

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import AiAnalysisPanel from "../components/AiAnalysisPanel";
 import ThemeLayout from "../components/ThemeLayout";
+import { useLiveGame } from "../hooks/useLiveGame";
 import { TKey, useLang } from "../i18n";
 import {
   BasketballGameDetail as BasketballGameDetailData,
@@ -66,14 +67,42 @@ function LineupList({ entries }: { entries: LineupEntry[] }) {
 
 export default function BasketballGameDetail() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [data, setData] = useState<BasketballGameDetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    fetchBasketballGameDetail(id).then(setData).catch((e) => setError(String(e)));
-  }, [id]);
+    fetchBasketballGameDetail(id, lang).then(setData).catch((e) => setError(String(e)));
+  }, [id, lang]);
+
+  useLiveGame(
+    data?.game.status === "live" ? `/ws/games/basketball/${id}/` : null,
+    (payload) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        const quarters = [...prev.quarters];
+        const idx = quarters.findIndex((q) => q.quarter === payload.quarter);
+        const updatedQuarter = {
+          quarter: payload.quarter,
+          home_score: payload.quarter_home_score,
+          away_score: payload.quarter_away_score,
+        };
+        if (idx >= 0) quarters[idx] = updatedQuarter;
+        else quarters.push(updatedQuarter);
+        return {
+          ...prev,
+          game: {
+            ...prev.game,
+            home_score: payload.home_score,
+            away_score: payload.away_score,
+            status: payload.status ?? prev.game.status,
+          },
+          quarters,
+        };
+      });
+    },
+  );
 
   return (
     <ThemeLayout sport="basketball">
@@ -85,10 +114,13 @@ export default function BasketballGameDetail() {
       {data && id && (
         <>
           <section className="panel scoreboard">
-            <span className="competition">{data.game.competition} · {data.game.venue}</span>
+            <span className="competition">
+              {data.game.competition} · {data.game.venue}
+              {data.game.status === "live" && ` · ${t("liveNow")}`}
+            </span>
             <div className="matchup large">
               <span className="team">{data.game.home_team.name}</span>
-              <span className="vs">
+              <span className="vs" dir="ltr">
                 {data.game.status === "scheduled"
                   ? new Date(data.game.kickoff).toLocaleTimeString([], {
                       hour: "2-digit",

@@ -15,6 +15,10 @@ const translations = {
     sport_football: "Football",
     sport_basketball: "Basketball",
     sport_tennis: "Tennis",
+    otherSports: "Other Sports",
+    sport_baseball: "Baseball",
+    sport_volleyball: "Volleyball",
+    backToSports: "← Sports",
     todaysGames: "Today's Games",
     loadingFixtures: "Loading fixtures...",
     noGames: "No games scheduled today.",
@@ -54,6 +58,10 @@ const translations = {
     sport_football: "כדורגל",
     sport_basketball: "כדורסל",
     sport_tennis: "טניס",
+    otherSports: "ענפי ספורט נוספים",
+    sport_baseball: "בייסבול",
+    sport_volleyball: "כדורעף",
+    backToSports: "→ ענפי ספורט",
     todaysGames: "משחקי היום",
     loadingFixtures: "טוען משחקים...",
     noGames: "אין משחקים מתוכננים היום.",
@@ -98,15 +106,15 @@ interface LangContextValue {
 }
 
 const LangContext = createContext<LangContextValue>({
-  lang: "en",
+  lang: "he",
   setLang: () => {},
-  t: (key) => translations.en[key],
+  t: (key) => translations.he[key],
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>(() => {
     const stored = localStorage.getItem("lang");
-    return stored === "he" ? "he" : "en";
+    return stored === "en" ? "en" : "he";
   });
 
   useEffect(() => {

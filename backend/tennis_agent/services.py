@@ -3,6 +3,7 @@ import logging
 from ai_common.service import AnalysisUnavailable, call_agent
 from tennis import services as match_queries
 from tennis.models import TennisMatch
+from translations.service import translate
 
 from .models import MatchAnalysis
 from .schemas import Probabilities, TennisAnalysis
@@ -24,41 +25,44 @@ exactly 100."""
 
 LANGUAGE_INSTRUCTIONS = {
     "en": "",
-    "he": "\n\nWrite the summary and key_factors in Hebrew (עברית). Keep player names in their original Latin spelling.",
+    "he": "\n\nWrite the summary and key_factors in Hebrew (עברית). Use the Hebrew player names exactly as given in the context — do not use English/Latin spellings.",
 }
 
 
-def _build_match_context(match: TennisMatch) -> dict:
+def _build_match_context(match: TennisMatch, language: str = "en") -> dict:
+    def tr(text):
+        return translate(text, language)
+
     def results(qs):
         return [
             {
                 "date": str(m.start_time.date()),
-                "tournament": m.tournament,
+                "tournament": tr(m.tournament),
                 "round": m.round,
-                "player1": m.player1.name,
-                "player2": m.player2.name,
-                "winner": m.winner.name if m.winner_id else None,
+                "player1": tr(m.player1.name),
+                "player2": tr(m.player2.name),
+                "winner": tr(m.winner.name) if m.winner_id else None,
             }
             for m in qs
         ]
 
     return {
         "fixture": {
-            "tournament": match.tournament,
+            "tournament": tr(match.tournament),
             "round": match.round,
             "start_time": match.start_time.isoformat(),
-            "venue": match.venue,
-            "player1": match.player1.name,
-            "player2": match.player2.name,
+            "venue": tr(match.venue),
+            "player1": tr(match.player1.name),
+            "player2": tr(match.player2.name),
         },
         "player1": {
-            "name": match.player1.name,
+            "name": tr(match.player1.name),
             "ranking": match.player1.ranking,
             "recent_form": results(match_queries.recent_results(match.player1)),
             "form_stats": match_queries.form_stats(match.player1),
         },
         "player2": {
-            "name": match.player2.name,
+            "name": tr(match.player2.name),
             "ranking": match.player2.ranking,
             "recent_form": results(match_queries.recent_results(match.player2)),
             "form_stats": match_queries.form_stats(match.player2),
@@ -115,7 +119,7 @@ def get_or_create_analysis(match: TennisMatch, language: str = "en") -> MatchAna
     if existing:
         return existing
 
-    context = _build_match_context(match)
+    context = _build_match_context(match, language)
 
     logger.info("Requesting tennis analysis for match %s (lang=%s)", match.id, language)
     analysis, model_label = call_agent(

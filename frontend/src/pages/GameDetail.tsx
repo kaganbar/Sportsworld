@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import AiAnalysisPanel from "../components/AiAnalysisPanel";
 import ThemeLayout from "../components/ThemeLayout";
+import { useLiveGame } from "../hooks/useLiveGame";
 import { TKey, useLang } from "../i18n";
 import {
   FormStats,
@@ -66,14 +67,34 @@ function LineupList({ entries }: { entries: LineupEntry[] }) {
 
 export default function GameDetail() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [data, setData] = useState<GameDetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    fetchGameDetail(id).then(setData).catch((e) => setError(String(e)));
-  }, [id]);
+    fetchGameDetail(id, lang).then(setData).catch((e) => setError(String(e)));
+  }, [id, lang]);
+
+  useLiveGame(
+    data?.game.status === "live" ? `/ws/games/football/${id}/` : null,
+    (payload) => {
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              game: {
+                ...prev.game,
+                home_score: payload.home_score,
+                away_score: payload.away_score,
+                minute: payload.minute,
+                status: payload.status ?? prev.game.status,
+              },
+            }
+          : prev,
+      );
+    },
+  );
 
   return (
     <ThemeLayout sport="football">
@@ -85,16 +106,20 @@ export default function GameDetail() {
       {data && id && (
         <>
           <section className="panel scoreboard">
-            <span className="competition">{data.game.competition} · {data.game.venue}</span>
+            <span className="competition">
+              {data.game.competition} · {data.game.venue}
+              {data.game.status === "live" && ` · ${t("liveNow")}`}
+            </span>
             <div className="matchup large">
               <span className="team">{data.game.home_team.name}</span>
-              <span className="vs">
+              <span className="vs" dir="ltr">
                 {data.game.status === "scheduled"
                   ? new Date(data.game.kickoff).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })
                   : `${data.game.home_score ?? "-"} : ${data.game.away_score ?? "-"}`}
+                {data.game.status === "live" && data.game.minute != null && ` (${data.game.minute}')`}
               </span>
               <span className="team">{data.game.away_team.name}</span>
             </div>

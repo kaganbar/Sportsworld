@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import AiAnalysisPanel from "../components/AiAnalysisPanel";
 import ThemeLayout from "../components/ThemeLayout";
+import { useLiveGame } from "../hooks/useLiveGame";
 import { useLang } from "../i18n";
 import {
   TennisFormStats,
@@ -40,14 +41,37 @@ function StatsColumn({ label, stats }: { label: string; stats: TennisFormStats }
 
 export default function TennisMatchDetail() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [data, setData] = useState<TennisMatchDetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    fetchTennisMatchDetail(id).then(setData).catch((e) => setError(String(e)));
-  }, [id]);
+    fetchTennisMatchDetail(id, lang).then(setData).catch((e) => setError(String(e)));
+  }, [id, lang]);
+
+  useLiveGame(
+    data?.match.status === "live" ? `/ws/tennis/${id}/` : null,
+    (payload) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        const sets = [...prev.sets];
+        const idx = sets.findIndex((s) => s.set_number === payload.set_number);
+        const updatedSet = {
+          set_number: payload.set_number,
+          player1_games: payload.player1_games,
+          player2_games: payload.player2_games,
+        };
+        if (idx >= 0) sets[idx] = updatedSet;
+        else sets.push(updatedSet);
+        return {
+          ...prev,
+          sets,
+          match: { ...prev.match, status: payload.status ?? prev.match.status },
+        };
+      });
+    },
+  );
 
   return (
     <ThemeLayout sport="tennis">
@@ -59,10 +83,13 @@ export default function TennisMatchDetail() {
       {data && id && (
         <>
           <section className="panel scoreboard">
-            <span className="competition">{data.match.tournament} · {data.match.round} · {data.match.venue}</span>
+            <span className="competition">
+              {data.match.tournament} · {data.match.round} · {data.match.venue}
+              {data.match.status === "live" && ` · ${t("liveNow")}`}
+            </span>
             <div className="matchup large">
               <span className="team">{data.match.player1.name}</span>
-              <span className="vs">
+              <span className="vs" dir="ltr">
                 {data.match.status === "scheduled"
                   ? new Date(data.match.start_time).toLocaleTimeString([], {
                       hour: "2-digit",

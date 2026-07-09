@@ -1,9 +1,13 @@
 from rest_framework import serializers
 
+from translations.fields import TranslatedCharField
+
 from .models import Game, Injury, Lineup, MatchResult, Team
 
 
 class TeamSerializer(serializers.ModelSerializer):
+    name = TranslatedCharField()
+
     class Meta:
         model = Team
         fields = ["id", "name", "short_name", "country", "primary_color"]
@@ -12,17 +16,19 @@ class TeamSerializer(serializers.ModelSerializer):
 class GameListSerializer(serializers.ModelSerializer):
     home_team = TeamSerializer()
     away_team = TeamSerializer()
+    competition = TranslatedCharField()
+    venue = TranslatedCharField()
 
     class Meta:
         model = Game
         fields = [
             "id", "competition", "kickoff", "venue", "status",
-            "home_team", "away_team", "home_score", "away_score",
+            "home_team", "away_team", "home_score", "away_score", "minute",
         ]
 
 
 class LineupEntrySerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source="player.name")
+    name = TranslatedCharField(source="player.name")
     shirt_number = serializers.IntegerField(source="player.shirt_number")
 
     class Meta:
@@ -33,6 +39,7 @@ class LineupEntrySerializer(serializers.ModelSerializer):
 class MatchResultSerializer(serializers.ModelSerializer):
     home_team = serializers.CharField(source="home_team.short_name")
     away_team = serializers.CharField(source="away_team.short_name")
+    competition = TranslatedCharField()
 
     class Meta:
         model = MatchResult
@@ -40,7 +47,7 @@ class MatchResultSerializer(serializers.ModelSerializer):
 
 
 class InjurySerializer(serializers.ModelSerializer):
-    player = serializers.CharField(source="player.name")
+    player = TranslatedCharField(source="player.name")
 
     class Meta:
         model = Injury

@@ -30,3 +30,27 @@ export const sportsTheme = {
 } as const;
 
 export type SportKey = keyof typeof sportsTheme;
+
+// "Other Sports" sub-menu — navigation scaffolding only for now (no backend
+// models/agents yet), same shape/pattern as sportsTheme so building these out
+// later is additive, not a restructure.
+export const otherSportsTheme = {
+  baseball: {
+    label: "Baseball",
+    emoji: "⚾",
+    accent: "#b91c1c",
+    accentSoft: "#dc2626",
+    background: "linear-gradient(160deg, #78350f, #b91c1c)",
+    available: false,
+  },
+  volleyball: {
+    label: "Volleyball",
+    emoji: "🏐",
+    accent: "#ca8a04",
+    accentSoft: "#eab308",
+    background: "linear-gradient(160deg, #713f12, #ca8a04)",
+    available: false,
+  },
+} as const;
+
+export type OtherSportKey = keyof typeof otherSportsTheme;

@@ -17,6 +17,49 @@ from football_agent.models import MatchAnalysis as FootballMatchAnalysis
 from games.models import Game, Injury, Lineup, MatchResult, Player, Team
 from tennis.models import TennisMatch, TennisPlayer, TennisSet
 from tennis_agent.models import MatchAnalysis as TennisMatchAnalysis
+from translations.models import NameTranslation
+
+# English -> Hebrew for real-world entities only (teams, real tennis players,
+# competitions, venues). Deliberately NOT translating the procedurally
+# generated fictional player names below — see _seed_translations().
+TRANSLATIONS_HE = [
+    # Football teams
+    ("Real Madrid", "ריאל מדריד", "team"),
+    ("FC Barcelona", "פ.צ. ברצלונה", "team"),
+    ("Manchester City", "מנצ'סטר סיטי", "team"),
+    ("Liverpool", "ליברפול", "team"),
+    ("Bayern Munich", "באיירן מינכן", "team"),
+    ("Paris Saint-Germain", "פריז סן ז'רמן", "team"),
+    # Basketball teams
+    ("Los Angeles Lakers", "לוס אנג'לס לייקרס", "team"),
+    ("Boston Celtics", "בוסטון סלטיקס", "team"),
+    ("Golden State Warriors", "גולדן סטייט ווריורס", "team"),
+    ("Miami Heat", "מיאמי היט", "team"),
+    # Real tennis players
+    ("Novak Djokovic", "נובאק ג'וקוביץ'", "player"),
+    ("Carlos Alcaraz", "קרלוס אלקראס", "player"),
+    ("Jannik Sinner", "יאניק סינר", "player"),
+    ("Daniil Medvedev", "דניל מדבדב", "player"),
+    ("Iga Swiatek", "איגה שיונטק", "player"),
+    ("Aryna Sabalenka", "אריינה סבלנקה", "player"),
+    ("Coco Gauff", "קוקו גאף", "player"),
+    ("Elena Rybakina", "אלנה ריבקינה", "player"),
+    # Competitions
+    ("La Liga", "ליגה ספרדית", "competition"),
+    ("Premier League", "הפרמייר ליג", "competition"),
+    ("Champions League", "ליגת האלופות", "competition"),
+    ("Friendly", "משחק ידידות", "competition"),
+    ("League", "ליגה", "competition"),
+    ("Cup", "גביע", "competition"),
+    ("Wimbledon", "וימבלדון", "competition"),
+    # Venues
+    ("Santiago Bernabeu", "סנטיאגו ברנבאו", "venue"),
+    ("Etihad Stadium", "אצטדיון האיתיחאד", "venue"),
+    ("Allianz Arena", "אצטדיון אליאנץ", "venue"),
+    ("Crypto.com Arena", "אצטדיון קריפטו.קום", "venue"),
+    ("Chase Center", "צ'ייס סנטר", "venue"),
+    ("Centre Court", "המגרש המרכזי", "venue"),
+]
 
 FOOTBALL_TEAMS = [
     # name, short, country, color
@@ -51,10 +94,10 @@ INJURY_REASONS = [
 ]
 
 FOOTBALL_TODAYS_FIXTURES = [
-    # home, away, competition, venue, hour (local)
-    ("RMA", "BAR", "La Liga", "Santiago Bernabeu", 21),
-    ("MCI", "LIV", "Premier League", "Etihad Stadium", 18),
-    ("BAY", "PSG", "Champions League", "Allianz Arena", 20),
+    # home, away, competition, venue, hour (local), status
+    ("RMA", "BAR", "La Liga", "Santiago Bernabeu", 21, "scheduled"),
+    ("MCI", "LIV", "Premier League", "Etihad Stadium", 18, "live"),
+    ("BAY", "PSG", "Champions League", "Allianz Arena", 20, "scheduled"),
 ]
 
 BASKETBALL_TEAMS = [
@@ -104,6 +147,7 @@ class Command(BaseCommand):
         football_teams, football_players = self._seed_football(rng, today)
         basketball_teams, basketball_players = self._seed_basketball(rng, today)
         tennis_players = self._seed_tennis(rng, today)
+        self._seed_translations()
 
         self.stdout.write(self.style.SUCCESS(
             f"Football: {len(football_teams)} teams, {sum(len(p) for p in football_players.values())} players, "
@@ -112,10 +156,11 @@ class Command(BaseCommand):
             f"{Game.objects.filter(sport='basketball').count()} games today.\n"
             f"Tennis: {len(tennis_players)} players, {TennisMatch.objects.filter(start_time__date=today).count()} matches today.\n"
             f"Totals: {MatchResult.objects.count()} match results, {Injury.objects.count()} injuries, "
-            f"{TennisMatch.objects.count()} tennis matches."
+            f"{TennisMatch.objects.count()} tennis matches, {NameTranslation.objects.count()} Hebrew translations."
         ))
 
     def _wipe(self):
+        NameTranslation.objects.all().delete()
         TennisMatchAnalysis.objects.all().delete()
         TennisSet.objects.all().delete()
         TennisMatch.objects.all().delete()
@@ -189,18 +234,22 @@ class Command(BaseCommand):
                 Injury.objects.create(player=player, team=team, status=injury_status, reason=reason)
 
         # Today's fixtures + starting XIs (skipping injured 'out' players)
-        for home_short, away_short, competition, venue, hour in FOOTBALL_TODAYS_FIXTURES:
+        for home_short, away_short, competition, venue, hour, status in FOOTBALL_TODAYS_FIXTURES:
             kickoff = timezone.make_aware(
                 datetime.datetime.combine(today, datetime.time(hour=hour))
             )
+            is_live = status == "live"
             game = Game.objects.create(
                 sport="football",
                 competition=competition,
                 kickoff=kickoff,
                 venue=venue,
-                status=Game.Status.SCHEDULED,
+                status=status,
                 home_team=teams[home_short],
                 away_team=teams[away_short],
+                minute=60 if is_live else None,
+                home_score=1 if is_live else None,
+                away_score=1 if is_live else None,
             )
             for short in (home_short, away_short):
                 out_ids = {
@@ -366,9 +415,11 @@ class Command(BaseCommand):
                 opponent = rng.choice([n for n in names if n != name and players[n].tour == players[name].tour])
                 create_finished_match(name, opponent, 14 * (i + 1) + rng.randint(0, 5), "Tour Event", rng.choice(["R32", "R16", "QF"]))
 
-        # Today's scheduled matches
-        for p1_name, p2_name, tour, tournament, round_, venue, hour in TENNIS_TODAYS_MATCHES:
-            TennisMatch.objects.create(
+        # Today's matches — the first one is seeded "live" (with an in-progress
+        # set) so the WebSocket ticker has something to advance immediately.
+        for i, (p1_name, p2_name, tour, tournament, round_, venue, hour) in enumerate(TENNIS_TODAYS_MATCHES):
+            is_live = i == 0
+            match = TennisMatch.objects.create(
                 tour=tour,
                 tournament=tournament,
                 round=round_,
@@ -376,9 +427,17 @@ class Command(BaseCommand):
                 start_time=timezone.make_aware(
                     datetime.datetime.combine(today, datetime.time(hour=hour))
                 ),
-                status=TennisMatch.Status.SCHEDULED,
+                status=TennisMatch.Status.LIVE if is_live else TennisMatch.Status.SCHEDULED,
                 player1=players[p1_name],
                 player2=players[p2_name],
             )
+            if is_live:
+                TennisSet.objects.create(match=match, set_number=1, player1_games=4, player2_games=3)
 
         return players
+
+    def _seed_translations(self):
+        for source, translated, category in TRANSLATIONS_HE:
+            NameTranslation.objects.update_or_create(
+                source_text=source, defaults={"translated_text": translated, "category": category}
+            )

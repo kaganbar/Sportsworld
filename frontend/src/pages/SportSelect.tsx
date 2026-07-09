@@ -37,6 +37,12 @@ export default function SportSelect() {
             </div>
           );
         })}
+        <Link to="/other-sports" className="sport-card-link">
+          <div className="sport-card other-sports-card">
+            <span className="sport-emoji">🏅</span>
+            <span className="sport-name">{t("otherSports")}</span>
+          </div>
+        </Link>
       </div>
     </main>
   );

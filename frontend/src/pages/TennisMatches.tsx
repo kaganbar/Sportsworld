@@ -10,13 +10,13 @@ function startTime(iso: string) {
 }
 
 export default function TennisMatches() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [matches, setMatches] = useState<TennisMatch[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchTennisMatches().then(setMatches).catch((e) => setError(String(e)));
-  }, []);
+    fetchTennisMatches(lang).then(setMatches).catch((e) => setError(String(e)));
+  }, [lang]);
 
   return (
     <ThemeLayout sport="tennis">
@@ -33,7 +33,7 @@ export default function TennisMatches() {
             </span>
             <div className="matchup">
               <span className="team home">{match.player1.name}</span>
-              <span className="vs">
+              <span className="vs" dir="ltr">
                 {match.status === "scheduled" ? startTime(match.start_time) : t("liveNow")}
               </span>
               <span className="team away">{match.player2.name}</span>

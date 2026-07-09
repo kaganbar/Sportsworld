@@ -15,6 +15,9 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+
   backend:
     build: ./backend
     command: python manage.py runserver 0.0.0.0:8000
@@ -26,9 +29,28 @@ services:
       - .env
     environment:
       POSTGRES_HOST: db
+      REDIS_HOST: redis
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
+
+  live_ticker:
+    build: ./backend
+    command: python manage.py run_live_ticker
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
     build: ./frontend

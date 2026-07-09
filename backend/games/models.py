@@ -45,6 +45,7 @@ class Game(models.Model):
     away_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="away_games")
     home_score = models.PositiveSmallIntegerField(null=True, blank=True)
     away_score = models.PositiveSmallIntegerField(null=True, blank=True)
+    minute = models.PositiveSmallIntegerField(null=True, blank=True)  # football's live clock only
 
     def __str__(self):
         return f"{self.home_team.short_name} vs {self.away_team.short_name} ({self.kickoff:%Y-%m-%d})"
