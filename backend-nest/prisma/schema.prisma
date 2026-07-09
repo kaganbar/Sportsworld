@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Sport {
+  football
+  basketball
+}
+
+enum GameStatus {
+  scheduled
+  live
+  finished
+}
+
+enum InjuryStatus {
+  out
+  doubtful
+  suspended
+}
+
+enum Tour {
+  atp
+  wta
+}
+
+enum Confidence {
+  low
+  medium
+  high
+}
+
+model Team {
+  id           Int      @id @default(autoincrement())
+  sport        Sport    @default(football)
+  name         String   @unique
+  shortName    String
+  country      String
+  primaryColor String   @default("#1E7B34")
+
+  players       Player[]
+  homeGames     Game[]        @relation("HomeTeam")
+  awayGames     Game[]        @relation("AwayTeam")
+  homeResults   MatchResult[] @relation("HomeResultTeam")
+  awayResults   MatchResult[] @relation("AwayResultTeam")
+  injuries      Injury[]
+  lineups       Lineup[]
+}
+
+model Player {
+  id          Int    @id @default(autoincrement())
+  team        Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId      Int
+  name        String
+  position    String
+  shirtNumber Int
+
+  injuries Injury[]
+  lineups  Lineup[]
+
+  @@unique([teamId, shirtNumber])
+}
+
+model Game {
+  id          Int        @id @default(autoincrement())
+  sport       Sport      @default(football)
+  competition String
+  kickoff     DateTime
+  venue       String
+  status      GameStatus @default(scheduled)
+  homeTeam    Team       @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  homeTeamId  Int
+  awayTeam    Team       @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  awayTeamId  Int
+  homeScore   Int?
+  awayScore   Int?
+  minute      Int? // football's live clock only
+
+  lineups       Lineup[]
+  quarterScores QuarterScore[]
+  analyses      MatchAnalysis[]
+
+  // Doubles as the scraper's natural key for upserts.
+  @@unique([sport, competition, kickoff, homeTeamId, awayTeamId])
+}
+
+model Lineup {
+  id         Int     @id @default(autoincrement())
+  game       Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId     Int
+  team       Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId     Int
+  player     Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId   Int
+  isStarting Boolean @default(true)
+  position   String
+
+  @@unique([gameId, playerId])
+}
+
+// A finished historical game — recent-form/H2H are derived by querying this
+// (plus finished Games), not a stored join table. Mirrors games.MatchResult.
+model MatchResult {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @db.Date
+  competition String
+  homeTeam    Team     @relation("HomeResultTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  homeTeamId  Int
+  awayTeam    Team     @relation("AwayResultTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  awayTeamId  Int
+  homeScore   Int
+  awayScore   Int
+
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+}
+
+model Injury {
+  id     Int          @id @default(autoincrement())
+  player Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId Int
+  team   Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId Int
+  status InjuryStatus
+  reason String
+}
+
+// Basketball-only per-quarter score breakdown — the one genuinely
+// sport-specific model, everything else above is shared with football.
+model QuarterScore {
+  id        Int @id @default(autoincrement())
+  game      Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId    Int
+  quarter   Int
+  homeScore Int
+  awayScore Int
+
+  @@unique([gameId, quarter])
+}
+
+model TennisPlayer {
+  id      Int    @id @default(autoincrement())
+  name    String @unique
+  country String
+  tour    Tour
+  ranking Int?
+
+  matchesAsP1 TennisMatch[] @relation("P1")
+  matchesAsP2 TennisMatch[] @relation("P2")
+  wonMatches  TennisMatch[] @relation("Winner")
+}
+
+model TennisMatch {
+  id         Int           @id @default(autoincrement())
+  tour       Tour
+  tournament String
+  round      String
+  venue      String
+  startTime  DateTime
+  status     GameStatus    @default(scheduled)
+  player1    TennisPlayer  @relation("P1", fields: [player1Id], references: [id], onDelete: Cascade)
+  player1Id  Int
+  player2    TennisPlayer  @relation("P2", fields: [player2Id], references: [id], onDelete: Cascade)
+  player2Id  Int
+  winner     TennisPlayer? @relation("Winner", fields: [winnerId], references: [id], onDelete: SetNull)
+  winnerId   Int?
+
+  sets     TennisSet[]
+  analyses MatchAnalysis[]
+
+  @@unique([tour, tournament, round, startTime, player1Id, player2Id])
+}
+
+model TennisSet {
+  id           Int         @id @default(autoincrement())
+  match        TennisMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId      Int
+  setNumber    Int
+  player1Games Int
+  player2Games Int
+
+  @@unique([matchId, setNumber])
+}
+
+// English -> Hebrew dictionary, sport-agnostic. Falls back to sourceText
+// when no entry exists (see TranslationsService).
+model NameTranslation {
+  id             Int    @id @default(autoincrement())
+  sourceText     String @unique
+  translatedText String
+  category       String @default("")
+}
+
+// One model for all three sports' AI analysis, not three Django-style apps —
+// they differ only by a nullable column (drawPct vs player1/2WinPct), so a
+// single table with nullable FKs/fields avoids triplicating cache logic.
+// Exactly one of gameId/tennisMatchId is populated per row.
+model MatchAnalysis {
+  id             Int          @id @default(autoincrement())
+  sport          String // "football" | "basketball" | "tennis"
+  game           Game?        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId         Int?
+  tennisMatch    TennisMatch? @relation(fields: [tennisMatchId], references: [id], onDelete: Cascade)
+  tennisMatchId  Int?
+  language       String       @default("en")
+  summary        String
+  keyFactors     String[]
+  homeWinPct     Int? // football + basketball
+  drawPct        Int? // football only
+  awayWinPct     Int? // football + basketball
+  player1WinPct  Int? // tennis only
+  player2WinPct  Int? // tennis only
+  confidence     Confidence
+  model          String
+  createdAt      DateTime     @default(now())
+
+  @@unique([gameId, language])
+  @@unique([tennisMatchId, language])
+}

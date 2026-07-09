@@ -1,0 +1,400 @@
+/**
+ * Seeds football, basketball, and tennis mock data — ported from the Django
+ * backend's games/management/commands/seed_data.py so results are directly
+ * comparable between the two stacks. Idempotent: wipes and recreates.
+ * Usage: npm run seed
+ */
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+// Deterministic PRNG (mulberry32) — not the same algorithm as Python's
+// Mersenne Twister, so outputs won't be byte-identical to Django's seed,
+// but gives reproducible mock data across runs of this seed script.
+function mulberry32(seed: number) {
+  let a = seed;
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rng = mulberry32(42);
+const choice = <T>(arr: T[]): T => arr[Math.floor(rng() * arr.length)];
+const randint = (min: number, max: number) => min + Math.floor(rng() * (max - min + 1));
+
+const FOOTBALL_TEAMS: [string, string, string, string][] = [
+  ['Real Madrid', 'RMA', 'Spain', '#FEBE10'],
+  ['FC Barcelona', 'BAR', 'Spain', '#A50044'],
+  ['Manchester City', 'MCI', 'England', '#6CABDD'],
+  ['Liverpool', 'LIV', 'England', '#C8102E'],
+  ['Bayern Munich', 'BAY', 'Germany', '#DC052D'],
+  ['Paris Saint-Germain', 'PSG', 'France', '#004170'],
+];
+const FOOTBALL_SQUAD_TEMPLATE = [
+  ...Array(2).fill('GK'), ...Array(5).fill('DF'), ...Array(5).fill('MF'), ...Array(3).fill('FW'),
+];
+const FIRST_NAMES = [
+  'Marco', 'Luka', 'Kylian', 'Erling', 'Jude', 'Pedri', 'Vini', 'Rodri', 'Thibaut', 'Alisson',
+  'Virgil', 'Joshua', 'Leroy', 'Ousmane', 'Federico', 'Eduardo', 'Dani', 'Ferland', 'Aurelien', 'Toni', 'Harry', 'Phil',
+];
+const LAST_NAMES = [
+  'Silva', 'Fernandez', 'Muller', 'Diaz', 'Martinez', 'Costa', 'Moreira', 'Vega', 'Kovac', 'Dubois',
+  'Schmidt', 'Rossi', 'Almeida', 'Laurent', 'Weber', 'Navarro', 'Klein', 'Marchetti', 'Duarte', 'Fontaine',
+];
+const INJURY_REASONS: [string, string][] = [
+  ['out', 'Hamstring tear'], ['out', 'Knee ligament injury'],
+  ['doubtful', 'Ankle knock'], ['doubtful', 'Muscle fatigue'],
+  ['suspended', 'Accumulated yellow cards'],
+];
+// home, away, competition, venue, hour, status
+const FOOTBALL_FIXTURES: [string, string, string, string, number, string][] = [
+  ['RMA', 'BAR', 'La Liga', 'Santiago Bernabeu', 21, 'scheduled'],
+  ['MCI', 'LIV', 'Premier League', 'Etihad Stadium', 18, 'live'],
+  ['BAY', 'PSG', 'Champions League', 'Allianz Arena', 20, 'scheduled'],
+];
+
+const BASKETBALL_TEAMS: [string, string, string, string][] = [
+  ['Los Angeles Lakers', 'LAL', 'USA', '#552583'],
+  ['Boston Celtics', 'BOS', 'USA', '#007A33'],
+  ['Golden State Warriors', 'GSW', 'USA', '#1D428A'],
+  ['Miami Heat', 'MIA', 'USA', '#98002E'],
+];
+const BASKETBALL_SQUAD_TEMPLATE = [
+  ...Array(2).fill('PG'), ...Array(2).fill('SG'), ...Array(2).fill('SF'), ...Array(2).fill('PF'), ...Array(2).fill('C'),
+];
+const BASKETBALL_FIXTURES: [string, string, string, string, number, string][] = [
+  ['LAL', 'BOS', 'NBA', 'Crypto.com Arena', 19, 'scheduled'],
+  ['GSW', 'MIA', 'NBA', 'Chase Center', 22, 'live'],
+];
+
+const TENNIS_PLAYERS: [string, string, 'atp' | 'wta', number][] = [
+  ['Novak Djokovic', 'Serbia', 'atp', 1],
+  ['Carlos Alcaraz', 'Spain', 'atp', 2],
+  ['Jannik Sinner', 'Italy', 'atp', 3],
+  ['Daniil Medvedev', 'Russia', 'atp', 4],
+  ['Iga Swiatek', 'Poland', 'wta', 1],
+  ['Aryna Sabalenka', 'Belarus', 'wta', 2],
+  ['Coco Gauff', 'USA', 'wta', 3],
+  ['Elena Rybakina', 'Kazakhstan', 'wta', 4],
+];
+const TENNIS_MATCHES: [string, string, 'atp' | 'wta', string, string, string, number][] = [
+  ['Novak Djokovic', 'Carlos Alcaraz', 'atp', 'Wimbledon', 'SF', 'Centre Court', 14],
+  ['Iga Swiatek', 'Aryna Sabalenka', 'wta', 'Wimbledon', 'SF', 'Centre Court', 17],
+];
+
+const TRANSLATIONS_HE: [string, string, string][] = [
+  ['Real Madrid', 'ריאל מדריד', 'team'],
+  ['FC Barcelona', 'פ.צ. ברצלונה', 'team'],
+  ['Manchester City', "מנצ'סטר סיטי", 'team'],
+  ['Liverpool', 'ליברפול', 'team'],
+  ['Bayern Munich', 'באיירן מינכן', 'team'],
+  ['Paris Saint-Germain', "פריז סן ז'רמן", 'team'],
+  ['Los Angeles Lakers', "לוס אנג'לס לייקרס", 'team'],
+  ['Boston Celtics', 'בוסטון סלטיקס', 'team'],
+  ['Golden State Warriors', 'גולדן סטייט ווריורס', 'team'],
+  ['Miami Heat', 'מיאמי היט', 'team'],
+  ['Novak Djokovic', "נובאק ג'וקוביץ'", 'player'],
+  ['Carlos Alcaraz', 'קרלוס אלקראס', 'player'],
+  ['Jannik Sinner', 'יאניק סינר', 'player'],
+  ['Daniil Medvedev', 'דניל מדבדב', 'player'],
+  ['Iga Swiatek', 'איגה שיונטק', 'player'],
+  ['Aryna Sabalenka', 'אריינה סבלנקה', 'player'],
+  ['Coco Gauff', 'קוקו גאף', 'player'],
+  ['Elena Rybakina', 'אלנה ריבקינה', 'player'],
+  ['La Liga', 'ליגה ספרדית', 'competition'],
+  ['Premier League', 'הפרמייר ליג', 'competition'],
+  ['Champions League', 'ליגת האלופות', 'competition'],
+  ['Friendly', 'משחק ידידות', 'competition'],
+  ['League', 'ליגה', 'competition'],
+  ['Cup', 'גביע', 'competition'],
+  ['Wimbledon', 'וימבלדון', 'competition'],
+  ['Santiago Bernabeu', 'סנטיאגו ברנבאו', 'venue'],
+  ['Etihad Stadium', 'אצטדיון האיתיחאד', 'venue'],
+  ['Allianz Arena', 'אצטדיון אליאנץ', 'venue'],
+  ['Crypto.com Arena', 'אצטדיון קריפטו.קום', 'venue'],
+  ['Chase Center', "צ'ייס סנטר", 'venue'],
+  ['Centre Court', 'המגרש המרכזי', 'venue'],
+];
+
+function todayAt(hour: number): Date {
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  return d;
+}
+
+async function wipe() {
+  await prisma.matchAnalysis.deleteMany();
+  await prisma.tennisSet.deleteMany();
+  await prisma.tennisMatch.deleteMany();
+  await prisma.tennisPlayer.deleteMany();
+  await prisma.lineup.deleteMany();
+  await prisma.quarterScore.deleteMany();
+  await prisma.game.deleteMany();
+  await prisma.matchResult.deleteMany();
+  await prisma.injury.deleteMany();
+  await prisma.player.deleteMany();
+  await prisma.team.deleteMany();
+  await prisma.nameTranslation.deleteMany();
+}
+
+async function createSquad(teamId: number, template: string[]) {
+  const used = new Set<string>();
+  const players = [];
+  for (let i = 0; i < template.length; i++) {
+    let name: string;
+    do {
+      name = `${choice(FIRST_NAMES)} ${choice(LAST_NAMES)}`;
+    } while (used.has(name));
+    used.add(name);
+    players.push(
+      await prisma.player.create({
+        data: { teamId, name, position: template[i], shirtNumber: i + 1 },
+      }),
+    );
+  }
+  return players;
+}
+
+async function seedTeamSport(
+  sport: 'football' | 'basketball',
+  teamDefs: [string, string, string, string][],
+  squadTemplate: string[],
+  fixtures: [string, string, string, string, number, string][],
+  scoreRange: [number, number],
+) {
+  const teams: Record<string, { id: number; shortName: string }> = {};
+  for (const [name, short, country, color] of teamDefs) {
+    const team = await prisma.team.create({ data: { sport, name, shortName: short, country, primaryColor: color } });
+    teams[short] = team;
+  }
+
+  const players: Record<string, any[]> = {};
+  for (const [, short] of teamDefs) {
+    players[short] = await createSquad(teams[short].id, squadTemplate);
+  }
+
+  const shorts = Object.keys(teams);
+  const today = new Date();
+
+  // H2H history for today's fixture pairs
+  for (const [home, away] of fixtures) {
+    for (const weeksAgo of [3, 9]) {
+      const h2hHome = choice([home, away]);
+      const h2hAway = h2hHome === home ? away : home;
+      const date = new Date(today);
+      date.setDate(date.getDate() - weeksAgo * 7);
+      await prisma.matchResult.create({
+        data: {
+          date,
+          competition: sport === 'football' ? 'Friendly' : 'NBA',
+          homeTeamId: teams[h2hHome].id,
+          awayTeamId: teams[h2hAway].id,
+          homeScore: randint(...scoreRange),
+          awayScore: randint(...scoreRange),
+        },
+      });
+    }
+  }
+
+  // General recent form: 5 per team
+  for (const short of shorts) {
+    for (let i = 0; i < 5; i++) {
+      const opponent = choice(shorts.filter((s) => s !== short));
+      const isHome = rng() < 0.5;
+      const date = new Date(today);
+      date.setDate(date.getDate() - (7 * (i + 1) + randint(0, 3)));
+      await prisma.matchResult.create({
+        data: {
+          date,
+          competition: sport === 'football' ? choice(['League', 'Cup', 'Champions League']) : 'NBA',
+          homeTeamId: teams[isHome ? short : opponent].id,
+          awayTeamId: teams[isHome ? opponent : short].id,
+          homeScore: randint(...scoreRange),
+          awayScore: randint(...scoreRange),
+        },
+      });
+    }
+  }
+
+  // Injuries
+  for (const short of shorts) {
+    const count = sport === 'football' ? randint(2, 3) : randint(1, 2);
+    const pool = [...players[short]];
+    for (let i = 0; i < count; i++) {
+      const idx = randint(0, pool.length - 1);
+      const [status, reason] = choice(INJURY_REASONS);
+      await prisma.injury.create({ data: { playerId: pool[idx].id, teamId: teams[short].id, status: status as any, reason } });
+      pool.splice(idx, 1);
+    }
+  }
+
+  // Today's fixtures + lineups
+  for (const [home, away, competition, venue, hour, status] of fixtures) {
+    const isLive = status === 'live';
+    const game = await prisma.game.create({
+      data: {
+        sport,
+        competition,
+        kickoff: todayAt(hour),
+        venue,
+        status: status as any,
+        homeTeamId: teams[home].id,
+        awayTeamId: teams[away].id,
+        minute: sport === 'football' && isLive ? 60 : null,
+        homeScore: isLive ? (sport === 'football' ? 1 : null) : null,
+        awayScore: isLive ? (sport === 'football' ? 1 : null) : null,
+      },
+    });
+
+    for (const short of [home, away]) {
+      const outIds = new Set(
+        (await prisma.injury.findMany({ where: { teamId: teams[short].id, status: 'out' } })).map((i) => i.playerId),
+      );
+      const available = players[short].filter((p) => !outIds.has(p.id));
+      if (sport === 'football') {
+        const gk = available.find((p) => p.position === 'GK');
+        const outfield = available.filter((p) => p.position !== 'GK').slice(0, 10);
+        for (const p of [gk, ...outfield]) {
+          await prisma.lineup.create({ data: { gameId: game.id, teamId: teams[short].id, playerId: p.id, isStarting: true, position: p.position } });
+        }
+        const bench = available.filter((p) => p !== gk && !outfield.includes(p)).slice(0, 5);
+        for (const p of bench) {
+          await prisma.lineup.create({ data: { gameId: game.id, teamId: teams[short].id, playerId: p.id, isStarting: false, position: p.position } });
+        }
+      } else {
+        const starters = available.slice(0, 5);
+        const bench = available.slice(5);
+        for (const p of starters) {
+          await prisma.lineup.create({ data: { gameId: game.id, teamId: teams[short].id, playerId: p.id, isStarting: true, position: p.position } });
+        }
+        for (const p of bench) {
+          await prisma.lineup.create({ data: { gameId: game.id, teamId: teams[short].id, playerId: p.id, isStarting: false, position: p.position } });
+        }
+      }
+    }
+
+    if (sport === 'basketball' && isLive) {
+      let homeTotal = 0;
+      let awayTotal = 0;
+      for (let q = 1; q <= 3; q++) {
+        const h = randint(20, 32);
+        const a = randint(20, 32);
+        homeTotal += h;
+        awayTotal += a;
+        await prisma.quarterScore.create({ data: { gameId: game.id, quarter: q, homeScore: h, awayScore: a } });
+      }
+      await prisma.game.update({ where: { id: game.id }, data: { homeScore: homeTotal, awayScore: awayTotal } });
+    }
+  }
+
+  return { teams, players };
+}
+
+async function seedTennis() {
+  const players: Record<string, { id: number; tour: 'atp' | 'wta' }> = {};
+  for (const [name, country, tour, ranking] of TENNIS_PLAYERS) {
+    players[name] = await prisma.tennisPlayer.create({ data: { name, country, tour, ranking } });
+  }
+  const names = Object.keys(players);
+
+  async function createFinishedMatch(p1Name: string, p2Name: string, daysAgo: number, tournament: string, round: string) {
+    const p1 = players[p1Name];
+    const p2 = players[p2Name];
+    const winner = choice([p1, p2]);
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    date.setHours(14, 0, 0, 0);
+    const match = await prisma.tennisMatch.create({
+      data: {
+        tour: p1.tour,
+        tournament,
+        round,
+        venue: `${tournament} Court`,
+        startTime: date,
+        status: 'finished',
+        player1Id: p1.id,
+        player2Id: p2.id,
+        winnerId: winner.id,
+      },
+    });
+    const numSets = choice([2, 3]);
+    for (let setNumber = 1; setNumber <= numSets; setNumber++) {
+      const isLast = setNumber === numSets;
+      const winnerGames = 6;
+      const loserGames = isLast ? randint(0, 4) : randint(2, 4);
+      const [p1Games, p2Games] = winner === p1 ? [winnerGames, loserGames] : [loserGames, winnerGames];
+      await prisma.tennisSet.create({ data: { matchId: match.id, setNumber, player1Games: p1Games, player2Games: p2Games } });
+    }
+    return match;
+  }
+
+  // H2H for today's matchups
+  for (const [p1Name, p2Name] of TENNIS_MATCHES) {
+    for (const daysAgo of [60, 200]) {
+      await createFinishedMatch(p1Name, p2Name, daysAgo, players[p1Name].tour === 'atp' ? 'ATP Masters' : 'WTA 1000', 'F');
+    }
+  }
+  // General recent form
+  for (const name of names) {
+    for (let i = 0; i < 4; i++) {
+      const opponent = choice(names.filter((n) => n !== name && players[n].tour === players[name].tour));
+      await createFinishedMatch(name, opponent, 14 * (i + 1) + randint(0, 5), 'Tour Event', choice(['R32', 'R16', 'QF']));
+    }
+  }
+
+  // Today's matches — first one live
+  for (let i = 0; i < TENNIS_MATCHES.length; i++) {
+    const [p1Name, p2Name, tour, tournament, round, venue, hour] = TENNIS_MATCHES[i];
+    const isLive = i === 0;
+    const match = await prisma.tennisMatch.create({
+      data: {
+        tour, tournament, round, venue,
+        startTime: todayAt(hour),
+        status: isLive ? 'live' : 'scheduled',
+        player1Id: players[p1Name].id,
+        player2Id: players[p2Name].id,
+      },
+    });
+    if (isLive) {
+      await prisma.tennisSet.create({ data: { matchId: match.id, setNumber: 1, player1Games: 4, player2Games: 3 } });
+    }
+  }
+}
+
+async function seedTranslations() {
+  for (const [sourceText, translatedText, category] of TRANSLATIONS_HE) {
+    await prisma.nameTranslation.upsert({
+      where: { sourceText },
+      update: { translatedText, category },
+      create: { sourceText, translatedText, category },
+    });
+  }
+}
+
+async function main() {
+  await wipe();
+  await seedTeamSport('football', FOOTBALL_TEAMS, FOOTBALL_SQUAD_TEMPLATE, FOOTBALL_FIXTURES, [0, 4]);
+  await seedTeamSport('basketball', BASKETBALL_TEAMS, BASKETBALL_SQUAD_TEMPLATE, BASKETBALL_FIXTURES, [95, 125]);
+  await seedTennis();
+  await seedTranslations();
+
+  const [teams, players, games, translations] = await Promise.all([
+    prisma.team.count(),
+    prisma.player.count(),
+    prisma.game.count(),
+    prisma.nameTranslation.count(),
+  ]);
+  console.log(`Seeded ${teams} teams, ${players} players, ${games} games, ${translations} Hebrew translations.`);
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
