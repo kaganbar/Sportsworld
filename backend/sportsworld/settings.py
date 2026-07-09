@@ -23,6 +23,10 @@ INSTALLED_APPS = [
     "corsheaders",
     "games",
     "football_agent",
+    "basketball",
+    "basketball_agent",
+    "tennis",
+    "tennis_agent",
 ]
 
 MIDDLEWARE = [

@@ -3,27 +3,24 @@ from rest_framework.decorators import api_view
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from . import services
-from .models import Game
-from .serializers import (
+from games import services as game_queries
+from games.models import Game
+from games.serializers import (
     GameListSerializer,
     InjurySerializer,
     LineupEntrySerializer,
     MatchResultSerializer,
 )
 
-
-@api_view(["GET"])
-def health(request):
-    return Response({"status": "ok", "service": "sportsworld-backend"})
+from .models import QuarterScore
+from .serializers import QuarterScoreSerializer
 
 
 @api_view(["GET"])
 def games_today(request):
     today = timezone.localdate()
-    sport = request.query_params.get("sport", "football")
     games = (
-        Game.objects.filter(kickoff__date=today, sport=sport)
+        Game.objects.filter(kickoff__date=today, sport="basketball")
         .select_related("home_team", "away_team")
         .order_by("kickoff")
     )
@@ -33,7 +30,7 @@ def games_today(request):
 @api_view(["GET"])
 def game_detail(request, game_id: int):
     game = get_object_or_404(
-        Game.objects.select_related("home_team", "away_team"), pk=game_id
+        Game.objects.select_related("home_team", "away_team"), pk=game_id, sport="basketball"
     )
 
     lineups = game.lineups.select_related("player").order_by("-is_starting", "position")
@@ -42,20 +39,21 @@ def game_detail(request, game_id: int):
 
     return Response({
         "game": GameListSerializer(game).data,
+        "quarters": QuarterScoreSerializer(game.quarter_scores.all(), many=True).data,
         "lineups": {
             "home": LineupEntrySerializer(home_lineup, many=True).data,
             "away": LineupEntrySerializer(away_lineup, many=True).data,
         },
         "stats": {
-            "home": services.form_stats(game.home_team),
-            "away": services.form_stats(game.away_team),
+            "home": game_queries.form_stats(game.home_team),
+            "away": game_queries.form_stats(game.away_team),
         },
         "recent_form": {
-            "home": MatchResultSerializer(services.recent_results(game.home_team), many=True).data,
-            "away": MatchResultSerializer(services.recent_results(game.away_team), many=True).data,
+            "home": MatchResultSerializer(game_queries.recent_results(game.home_team), many=True).data,
+            "away": MatchResultSerializer(game_queries.recent_results(game.away_team), many=True).data,
         },
         "head_to_head": MatchResultSerializer(
-            services.head_to_head(game.home_team, game.away_team), many=True
+            game_queries.head_to_head(game.home_team, game.away_team), many=True
         ).data,
         "injuries": {
             "home": InjurySerializer(game.home_team.injuries.select_related("player"), many=True).data,

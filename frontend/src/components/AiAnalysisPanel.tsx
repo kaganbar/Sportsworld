@@ -1,19 +1,38 @@
 import { useEffect, useState } from "react";
 
-import { TKey, useLang } from "../i18n";
-import { Analysis, ApiError, fetchAnalysis } from "../lib/api";
+import { Lang, TKey, useLang } from "../i18n";
+import { ApiError } from "../lib/api";
 
-export default function AiAnalysisPanel({
-  gameId,
-  homeName,
-  awayName,
+export interface AgentAnalysisBase {
+  summary: string;
+  key_factors: string[];
+  confidence: "low" | "medium" | "high";
+  model: string;
+  created_at: string;
+}
+
+export interface ProbabilitySegment {
+  key: string;
+  label: string;
+  pct: number;
+  className: "home" | "draw" | "away";
+}
+
+// Generic across every sport agent (Football/Basketball/Tennis/...): each caller
+// supplies its own fetch function and how to turn its analysis into probability
+// segments (3-way for football, 2-way for basketball/tennis), everything else
+// (loading/error/summary/key-factors/confidence) is shared.
+export default function AiAnalysisPanel<T extends AgentAnalysisBase>({
+  id,
+  fetchAnalysis,
+  probabilitySegments,
 }: {
-  gameId: string;
-  homeName: string;
-  awayName: string;
+  id: string;
+  fetchAnalysis: (id: string, lang: Lang) => Promise<T>;
+  probabilitySegments: (analysis: T) => ProbabilitySegment[];
 }) {
   const { t, lang } = useLang();
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [analysis, setAnalysis] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,13 +40,13 @@ export default function AiAnalysisPanel({
     setLoading(true);
     setAnalysis(null);
     setError(null);
-    fetchAnalysis(gameId, lang)
+    fetchAnalysis(id, lang)
       .then(setAnalysis)
       .catch((e: unknown) =>
         setError(e instanceof ApiError ? e.message : "Analysis unavailable."),
       )
       .finally(() => setLoading(false));
-  }, [gameId, lang]);
+  }, [id, lang, fetchAnalysis]);
 
   return (
     <section className="panel analysis-panel">
@@ -36,21 +55,17 @@ export default function AiAnalysisPanel({
       {error && <p className="muted">{error}</p>}
       {analysis && (
         <>
-          <div className="prob-bar" title="Win / draw / win probabilities">
-            <div className="prob home" style={{ width: `${analysis.probabilities.home_win}%` }}>
-              {analysis.probabilities.home_win}%
-            </div>
-            <div className="prob draw" style={{ width: `${analysis.probabilities.draw}%` }}>
-              {analysis.probabilities.draw}%
-            </div>
-            <div className="prob away" style={{ width: `${analysis.probabilities.away_win}%` }}>
-              {analysis.probabilities.away_win}%
-            </div>
+          <div className="prob-bar" title="Win probabilities">
+            {probabilitySegments(analysis).map((seg) => (
+              <div key={seg.key} className={`prob ${seg.className}`} style={{ width: `${seg.pct}%` }}>
+                {seg.pct}%
+              </div>
+            ))}
           </div>
           <div className="prob-legend">
-            <span>{homeName}</span>
-            <span>{t("draw")}</span>
-            <span>{awayName}</span>
+            {probabilitySegments(analysis).map((seg) => (
+              <span key={seg.key}>{seg.label}</span>
+            ))}
           </div>
           {analysis.summary.split("\n\n").map((paragraph, i) => (
             <p key={i}>{paragraph}</p>

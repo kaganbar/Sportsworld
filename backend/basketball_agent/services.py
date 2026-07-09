@@ -5,22 +5,21 @@ from games import services as game_queries
 from games.models import Game
 
 from .models import MatchAnalysis
-from .schemas import FootballAnalysis, Probabilities
+from .schemas import BasketballAnalysis, Probabilities
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are the SportsWorld Football Agent, a professional football
-(soccer) match analyst. You receive structured pre-match context as JSON: the fixture,
-each team's recent form, current injuries, and the head-to-head history between the
-two sides.
+SYSTEM_PROMPT = """You are the SportsWorld Basketball Agent, a professional basketball
+match analyst. You receive structured pre-match context as JSON: the fixture, each
+team's recent form, current injuries, and the head-to-head history between the two
+sides.
 
 Write an insightful pre-match analysis grounded ONLY in the data provided — do not
 invent players, results, or facts that are not in the context. Assess which team
 arrives in better shape and why, weigh the impact of injuries, and factor in the
-head-to-head record.
+head-to-head record. Basketball games cannot end in a draw.
 
-Your three probabilities (home win, draw, away win) must be integers that sum to
-exactly 100."""
+Your two probabilities (home win, away win) must be integers that sum to exactly 100."""
 
 LANGUAGE_INSTRUCTIONS = {
     "en": "",
@@ -71,10 +70,7 @@ def _build_match_context(game: Game) -> dict:
     }
 
 
-def _mock_analysis(context: dict, language: str) -> FootballAnalysis:
-    """Hardcoded stand-in with the exact same shape as a real FootballAnalysis,
-    used when AI_AGENT_MODE=mock so the UI/data flow can be built without an
-    Anthropic API key or cost."""
+def _mock_analysis(context: dict, language: str) -> BasketballAnalysis:
     home = context["fixture"]["home_team"]
     away = context["fixture"]["away_team"]
     if language == "he":
@@ -99,25 +95,22 @@ def _mock_analysis(context: dict, language: str) -> FootballAnalysis:
             "[Mock] Placeholder key factor two",
             "[Mock] Placeholder key factor three",
         ]
-    return FootballAnalysis(
+    return BasketballAnalysis(
         summary=summary,
         key_factors=key_factors,
-        probabilities=Probabilities(home_win=45, draw=25, away_win=30),
+        probabilities=Probabilities(home_win=55, away_win=45),
         confidence="medium",
     )
 
 
-def _normalize_probabilities(home: int, draw: int, away: int) -> tuple[int, int, int]:
-    """Structured outputs can't enforce cross-field sums, so the three values
-    usually land near-but-not-exactly 100. Rescale proportionally, then push the
-    rounding remainder into the largest bucket."""
-    total = home + draw + away
+def _normalize_probabilities(home: int, away: int) -> tuple[int, int]:
+    total = home + away
     if total <= 0:
-        return 34, 33, 33
-    scaled = [round(v * 100 / total) for v in (home, draw, away)]
+        return 50, 50
+    scaled = [round(v * 100 / total) for v in (home, away)]
     remainder = 100 - sum(scaled)
     scaled[scaled.index(max(scaled))] += remainder
-    return scaled[0], scaled[1], scaled[2]
+    return scaled[0], scaled[1]
 
 
 def get_or_create_analysis(game: Game, language: str = "en") -> MatchAnalysis:
@@ -127,17 +120,16 @@ def get_or_create_analysis(game: Game, language: str = "en") -> MatchAnalysis:
 
     context = _build_match_context(game)
 
-    logger.info("Requesting football analysis for game %s (%s, lang=%s)", game.id, game, language)
+    logger.info("Requesting basketball analysis for game %s (%s, lang=%s)", game.id, game, language)
     analysis, model_label = call_agent(
-        output_format=FootballAnalysis,
+        output_format=BasketballAnalysis,
         system=SYSTEM_PROMPT + LANGUAGE_INSTRUCTIONS.get(language, ""),
         context=context,
         mock_factory=lambda ctx: _mock_analysis(ctx, language),
     )
 
-    home, draw, away = _normalize_probabilities(
+    home, away = _normalize_probabilities(
         analysis.probabilities.home_win,
-        analysis.probabilities.draw,
         analysis.probabilities.away_win,
     )
 
@@ -147,7 +139,6 @@ def get_or_create_analysis(game: Game, language: str = "en") -> MatchAnalysis:
         summary=analysis.summary,
         key_factors=analysis.key_factors,
         home_win_pct=home,
-        draw_pct=draw,
         away_win_pct=away,
         confidence=analysis.confidence,
         model=model_label,

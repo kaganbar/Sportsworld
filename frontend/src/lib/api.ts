@@ -87,7 +87,108 @@ export class ApiError extends Error {
   }
 }
 
-export const fetchTodaysGames = () => get<Game[]>("/api/games/today/");
+export const fetchTodaysGames = () => get<Game[]>("/api/games/today/?sport=football");
 export const fetchGameDetail = (id: string) => get<GameDetail>(`/api/games/${id}/`);
 export const fetchAnalysis = (id: string, lang: "en" | "he" = "en") =>
   get<Analysis>(`/api/games/${id}/analysis/?lang=${lang}`);
+
+// --- Basketball ---
+
+export interface QuarterScore {
+  quarter: number;
+  home_score: number;
+  away_score: number;
+}
+
+export interface BasketballGameDetail {
+  game: Game;
+  quarters: QuarterScore[];
+  lineups: { home: LineupEntry[]; away: LineupEntry[] };
+  stats: { home: FormStats; away: FormStats };
+  recent_form: { home: PastResult[]; away: PastResult[] };
+  head_to_head: PastResult[];
+  injuries: { home: InjuryEntry[]; away: InjuryEntry[] };
+}
+
+export interface BasketballAnalysis {
+  summary: string;
+  key_factors: string[];
+  probabilities: { home_win: number; away_win: number };
+  confidence: "low" | "medium" | "high";
+  model: string;
+  created_at: string;
+}
+
+export const fetchBasketballGames = () => get<Game[]>("/api/games/today/?sport=basketball");
+export const fetchBasketballGameDetail = (id: string) =>
+  get<BasketballGameDetail>(`/api/basketball/games/${id}/`);
+export const fetchBasketballAnalysis = (id: string, lang: "en" | "he" = "en") =>
+  get<BasketballAnalysis>(`/api/basketball/games/${id}/analysis/?lang=${lang}`);
+
+// --- Tennis ---
+
+export interface TennisPlayer {
+  id: number;
+  name: string;
+  country: string;
+  tour: "atp" | "wta";
+  ranking: number | null;
+}
+
+export interface TennisMatch {
+  id: number;
+  tour: "atp" | "wta";
+  tournament: string;
+  round: string;
+  venue: string;
+  start_time: string;
+  status: "scheduled" | "live" | "finished";
+  player1: TennisPlayer;
+  player2: TennisPlayer;
+  winner_id: number | null;
+}
+
+export interface TennisSet {
+  set_number: number;
+  player1_games: number;
+  player2_games: number;
+}
+
+export interface TennisFormStats {
+  played: number;
+  wins: number;
+  losses: number;
+}
+
+export interface TennisMatchResult {
+  start_time: string;
+  tournament: string;
+  round: string;
+  player1: string;
+  player2: string;
+  winner: string | null;
+  sets: TennisSet[];
+}
+
+export interface TennisMatchDetail {
+  match: TennisMatch;
+  sets: TennisSet[];
+  stats: { player1: TennisFormStats; player2: TennisFormStats };
+  recent_form: { player1: TennisMatchResult[]; player2: TennisMatchResult[] };
+  head_to_head: TennisMatchResult[];
+}
+
+export interface TennisAnalysis {
+  summary: string;
+  key_factors: string[];
+  probabilities: { player1_win: number; player2_win: number };
+  confidence: "low" | "medium" | "high";
+  model: string;
+  created_at: string;
+}
+
+export const fetchTennisMatches = () => get<TennisMatch[]>("/api/tennis/matches/today/");
+export const fetchTennisMatchDetail = (id: string) =>
+  get<TennisMatchDetail>(`/api/tennis/matches/${id}/`);
+export const fetchTennisAnalysis = (id: string, lang: "en" | "he" = "en") =>
+  get<TennisAnalysis>(`/api/tennis/matches/${id}/analysis/?lang=${lang}`);

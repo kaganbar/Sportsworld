@@ -17,7 +17,7 @@ export const sportsTheme = {
     accent: "#c2410c",
     accentSoft: "#ea580c",
     background: "linear-gradient(160deg, #7c2d12, #c2410c)",
-    available: false,
+    available: true,
   },
   tennis: {
     label: "Tennis",
@@ -25,7 +25,7 @@ export const sportsTheme = {
     accent: "#1d4ed8",
     accentSoft: "#3b82f6",
     background: "linear-gradient(160deg, #1e3a8a, #1d4ed8)",
-    available: false,
+    available: true,
   },
 } as const;
 

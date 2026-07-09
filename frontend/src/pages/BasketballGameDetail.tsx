@@ -5,12 +5,12 @@ import AiAnalysisPanel from "../components/AiAnalysisPanel";
 import ThemeLayout from "../components/ThemeLayout";
 import { TKey, useLang } from "../i18n";
 import {
+  BasketballGameDetail as BasketballGameDetailData,
   FormStats,
-  GameDetail as GameDetailData,
   LineupEntry,
   PastResult,
-  fetchAnalysis,
-  fetchGameDetail,
+  fetchBasketballAnalysis,
+  fetchBasketballGameDetail,
 } from "../lib/api";
 
 function ResultRow({ result }: { result: PastResult }) {
@@ -31,7 +31,7 @@ function StatsColumn({ label, stats }: { label: string; stats: FormStats }) {
     <div className="stats-col">
       <h4>{label}</h4>
       <p className="stat-line big">
-        {stats.wins}{t("winsAbbr")} {stats.draws}{t("drawsAbbr")} {stats.losses}{t("lossesAbbr")}
+        {stats.wins}{t("winsAbbr")} {stats.losses}{t("lossesAbbr")}
       </p>
       <p className="stat-line">
         {stats.goals_for} {t("scored")} · {stats.goals_against} {t("conceded")}
@@ -64,20 +64,20 @@ function LineupList({ entries }: { entries: LineupEntry[] }) {
   );
 }
 
-export default function GameDetail() {
+export default function BasketballGameDetail() {
   const { id } = useParams<{ id: string }>();
   const { t } = useLang();
-  const [data, setData] = useState<GameDetailData | null>(null);
+  const [data, setData] = useState<BasketballGameDetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    fetchGameDetail(id).then(setData).catch((e) => setError(String(e)));
+    fetchBasketballGameDetail(id).then(setData).catch((e) => setError(String(e)));
   }, [id]);
 
   return (
-    <ThemeLayout sport="football">
-      <Link to="/football" className="back-link">
+    <ThemeLayout sport="basketball">
+      <Link to="/basketball" className="back-link">
         {t("backToGames")}
       </Link>
       {error && <p className="error-box">{t("loadErrorGame")}: {error}</p>}
@@ -100,12 +100,43 @@ export default function GameDetail() {
             </div>
           </section>
 
+          {data.quarters.length > 0 && (
+            <section className="panel">
+              <h3>{t("quarters")}</h3>
+              <div className="quarter-table-wrap">
+                <table className="quarter-table">
+                  <thead>
+                    <tr>
+                      <th />
+                      {data.quarters.map((q) => (
+                        <th key={q.quarter}>Q{q.quarter}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>{data.game.home_team.short_name}</td>
+                      {data.quarters.map((q) => (
+                        <td key={q.quarter}>{q.home_score}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td>{data.game.away_team.short_name}</td>
+                      {data.quarters.map((q) => (
+                        <td key={q.quarter}>{q.away_score}</td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
           <AiAnalysisPanel
             id={id}
-            fetchAnalysis={fetchAnalysis}
+            fetchAnalysis={fetchBasketballAnalysis}
             probabilitySegments={(analysis) => [
               { key: "home", label: data.game.home_team.short_name, pct: analysis.probabilities.home_win, className: "home" },
-              { key: "draw", label: t("draw"), pct: analysis.probabilities.draw, className: "draw" },
               { key: "away", label: data.game.away_team.short_name, pct: analysis.probabilities.away_win, className: "away" },
             ]}
           />

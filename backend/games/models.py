@@ -1,7 +1,13 @@
 from django.db import models
 
+SPORT_CHOICES = [
+    ("football", "Football"),
+    ("basketball", "Basketball"),
+]
+
 
 class Team(models.Model):
+    sport = models.CharField(max_length=20, choices=SPORT_CHOICES, default="football")
     name = models.CharField(max_length=100, unique=True)
     short_name = models.CharField(max_length=10)
     country = models.CharField(max_length=50)
@@ -30,6 +36,7 @@ class Game(models.Model):
         LIVE = "live"
         FINISHED = "finished"
 
+    sport = models.CharField(max_length=20, choices=SPORT_CHOICES, default="football")
     competition = models.CharField(max_length=100)
     kickoff = models.DateTimeField()
     venue = models.CharField(max_length=100)
