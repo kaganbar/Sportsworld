@@ -93,3 +93,8 @@ REST_FRAMEWORK = {
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-8")
+
+# "mock" (default without a key) returns hardcoded, schema-shaped agent responses so the
+# UI/data flow can be built and tested with no Anthropic API cost. "live" makes the real
+# Claude call and requires ANTHROPIC_API_KEY. Set explicitly to override the auto-default.
+AI_AGENT_MODE = os.environ.get("AI_AGENT_MODE", "live" if ANTHROPIC_API_KEY else "mock")

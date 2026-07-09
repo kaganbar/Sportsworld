@@ -1,0 +1,188 @@
+import json
+import logging
+
+import anthropic
+from django.conf import settings
+
+from games import services as game_queries
+from games.models import Game
+
+from .models import MatchAnalysis
+from .schemas import FootballAnalysis, Probabilities
+
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = """You are the SportsWorld Football Agent, a professional football
+(soccer) match analyst. You receive structured pre-match context as JSON: the fixture,
+each team's recent form, current injuries, and the head-to-head history between the
+two sides.
+
+Write an insightful pre-match analysis grounded ONLY in the data provided — do not
+invent players, results, or facts that are not in the context. Assess which team
+arrives in better shape and why, weigh the impact of injuries, and factor in the
+head-to-head record.
+
+Your three probabilities (home win, draw, away win) must be integers that sum to
+exactly 100."""
+
+LANGUAGE_INSTRUCTIONS = {
+    "en": "",
+    "he": "\n\nWrite the summary and key_factors in Hebrew (עברית). Keep team and player names in their original Latin spelling.",
+}
+
+
+class AnalysisUnavailable(Exception):
+    """Raised when an analysis cannot be produced right now (no key, refusal,
+    truncation). The view maps this to a 503 rather than a 500."""
+
+
+def _build_match_context(game: Game) -> dict:
+    def results(qs):
+        return [
+            {
+                "date": str(r.date),
+                "competition": r.competition,
+                "home_team": r.home_team.name,
+                "away_team": r.away_team.name,
+                "score": f"{r.home_score}-{r.away_score}",
+            }
+            for r in qs
+        ]
+
+    def injuries(team):
+        return [
+            {"player": i.player.name, "position": i.player.position, "status": i.status, "reason": i.reason}
+            for i in team.injuries.select_related("player")
+        ]
+
+    return {
+        "fixture": {
+            "competition": game.competition,
+            "kickoff": game.kickoff.isoformat(),
+            "venue": game.venue,
+            "home_team": game.home_team.name,
+            "away_team": game.away_team.name,
+        },
+        "home_team": {
+            "name": game.home_team.name,
+            "recent_form": results(game_queries.recent_results(game.home_team)),
+            "form_stats": game_queries.form_stats(game.home_team),
+            "injuries": injuries(game.home_team),
+        },
+        "away_team": {
+            "name": game.away_team.name,
+            "recent_form": results(game_queries.recent_results(game.away_team)),
+            "form_stats": game_queries.form_stats(game.away_team),
+            "injuries": injuries(game.away_team),
+        },
+        "head_to_head": results(game_queries.head_to_head(game.home_team, game.away_team)),
+    }
+
+
+def _mock_analysis(context: dict, language: str) -> FootballAnalysis:
+    """Hardcoded stand-in with the exact same shape as a real FootballAnalysis,
+    used when AI_AGENT_MODE=mock so the UI/data flow can be built without an
+    Anthropic API key or cost."""
+    home = context["fixture"]["home_team"]
+    away = context["fixture"]["away_team"]
+    if language == "he":
+        summary = (
+            f"[מדומה] ניתוח לדוגמה לקראת {home} מול {away}. "
+            "זהו טקסט קבוע מראש לצורכי פיתוח — לא בוצעה קריאה אמיתית ל-Claude. "
+            "עברו למצב live (AI_AGENT_MODE=live) עם מפתח API תקין לקבלת ניתוח אמיתי."
+        )
+        key_factors = [
+            "[מדומה] גורם מפתח לדוגמה מספר אחד",
+            "[מדומה] גורם מפתח לדוגמה מספר שתיים",
+            "[מדומה] גורם מפתח לדוגמה מספר שלוש",
+        ]
+    else:
+        summary = (
+            f"[Mock] Simulated pre-match analysis for {home} vs {away}. "
+            "This is fixed placeholder text for development — no real Claude API call "
+            "was made. Set AI_AGENT_MODE=live with a valid ANTHROPIC_API_KEY for real analysis."
+        )
+        key_factors = [
+            "[Mock] Placeholder key factor one",
+            "[Mock] Placeholder key factor two",
+            "[Mock] Placeholder key factor three",
+        ]
+    return FootballAnalysis(
+        summary=summary,
+        key_factors=key_factors,
+        probabilities=Probabilities(home_win=45, draw=25, away_win=30),
+        confidence="medium",
+    )
+
+
+def _normalize_probabilities(home: int, draw: int, away: int) -> tuple[int, int, int]:
+    """Structured outputs can't enforce cross-field sums, so the three values
+    usually land near-but-not-exactly 100. Rescale proportionally, then push the
+    rounding remainder into the largest bucket."""
+    total = home + draw + away
+    if total <= 0:
+        return 34, 33, 33
+    scaled = [round(v * 100 / total) for v in (home, draw, away)]
+    remainder = 100 - sum(scaled)
+    scaled[scaled.index(max(scaled))] += remainder
+    return scaled[0], scaled[1], scaled[2]
+
+
+def get_or_create_analysis(game: Game, language: str = "en") -> MatchAnalysis:
+    existing = MatchAnalysis.objects.filter(game=game, language=language).first()
+    if existing:
+        return existing
+
+    context = _build_match_context(game)
+
+    if settings.AI_AGENT_MODE == "mock":
+        analysis = _mock_analysis(context, language)
+        model_label = "mock"
+    else:
+        if not settings.ANTHROPIC_API_KEY:
+            raise AnalysisUnavailable(
+                "AI analysis is not configured — set ANTHROPIC_API_KEY in .env, "
+                "or set AI_AGENT_MODE=mock to use simulated analysis."
+            )
+
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+        logger.info("Requesting Claude analysis for game %s (%s, lang=%s)", game.id, game, language)
+        response = client.messages.parse(
+            model=settings.ANTHROPIC_MODEL,
+            max_tokens=2048,
+            thinking={"type": "adaptive"},
+            output_config={"effort": "medium"},
+            output_format=FootballAnalysis,
+            system=SYSTEM_PROMPT + LANGUAGE_INSTRUCTIONS.get(language, ""),
+            messages=[{"role": "user", "content": json.dumps(context)}],
+        )
+
+        if response.stop_reason == "refusal":
+            logger.warning("Claude refused analysis for game %s: %s", game.id, response.stop_details)
+            raise AnalysisUnavailable("Analysis temporarily unavailable for this match.")
+
+        analysis = response.parsed_output
+        if analysis is None:
+            logger.error("Unparseable analysis for game %s (stop_reason=%s)", game.id, response.stop_reason)
+            raise AnalysisUnavailable("Analysis temporarily unavailable — please try again.")
+
+        model_label = settings.ANTHROPIC_MODEL
+
+    home, draw, away = _normalize_probabilities(
+        analysis.probabilities.home_win,
+        analysis.probabilities.draw,
+        analysis.probabilities.away_win,
+    )
+
+    return MatchAnalysis.objects.create(
+        game=game,
+        language=language,
+        summary=analysis.summary,
+        key_factors=analysis.key_factors,
+        home_win_pct=home,
+        draw_pct=draw,
+        away_win_pct=away,
+        confidence=analysis.confidence,
+        model=model_label,
+    )
