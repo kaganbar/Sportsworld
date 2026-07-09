@@ -60,9 +60,10 @@ services:
       - /app/node_modules
     ports:
       - "8001:8001"
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sportsworld}:${POSTGRES_PASSWORD:-sportsworld}@db:5432/sportsworld_nest
-      CORS_ALLOWED_ORIGINS: http://localhost:5173
       PORT: 8001
     depends_on:
       db:

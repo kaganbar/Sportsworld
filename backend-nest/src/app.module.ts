@@ -7,6 +7,9 @@ import { StatsModule } from './stats/stats.module';
 import { GamesModule } from './games/games.module';
 import { BasketballModule } from './basketball/basketball.module';
 import { TennisModule } from './tennis/tennis.module';
+import { FootballAgentModule } from './agents/football-agent/football-agent.module';
+import { BasketballAgentModule } from './agents/basketball-agent/basketball-agent.module';
+import { TennisAgentModule } from './agents/tennis-agent/tennis-agent.module';
 
 @Module({
   imports: [
@@ -17,6 +20,9 @@ import { TennisModule } from './tennis/tennis.module';
     GamesModule,
     BasketballModule,
     TennisModule,
+    FootballAgentModule,
+    BasketballAgentModule,
+    TennisAgentModule,
   ],
   controllers: [AppController],
 })
