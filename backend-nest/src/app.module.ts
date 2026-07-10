@@ -13,6 +13,7 @@ import { FootballAgentModule } from './agents/football-agent/football-agent.modu
 import { BasketballAgentModule } from './agents/basketball-agent/basketball-agent.module';
 import { TennisAgentModule } from './agents/tennis-agent/tennis-agent.module';
 import { WebsocketsModule } from './websockets/websockets.module';
+import { ScraperModule } from './scraper/scraper.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { WebsocketsModule } from './websockets/websockets.module';
     BasketballAgentModule,
     TennisAgentModule,
     WebsocketsModule,
+    ScraperModule,
   ],
   controllers: [AppController],
 })

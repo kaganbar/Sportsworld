@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,6 +13,14 @@ const MAX_QUARTERS = 4;
 // comparable side by side during the migration. Uses Math.random() rather
 // than a seeded PRNG deliberately — like Django's `random.Random()` (unseeded),
 // this is the live simulation, not the deterministic mock/seed data.
+//
+// Gated behind LIVE_DATA_SOURCE=simulated: once ScraperService (Phase D) is
+// pulling real fixtures, this must not also run — both mutate any row with
+// status="live" regardless of where that row came from, so running both at
+// once would have this overwrite real scraped scores with random ones
+// between the scraper's polls. Default is "scraper"; set
+// LIVE_DATA_SOURCE=simulated to fall back to this for fully offline/seeded-
+// data dev.
 @Injectable()
 export class SimulatedTickerService {
   private readonly logger = new Logger(SimulatedTickerService.name);
@@ -19,10 +28,12 @@ export class SimulatedTickerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly config: ConfigService,
   ) {}
 
   @Interval(4000)
   async tick() {
+    if (this.config.get<string>('LIVE_DATA_SOURCE', 'scraper') !== 'simulated') return;
     await Promise.all([this.tickFootball(), this.tickBasketball(), this.tickTennis()]);
   }
 
