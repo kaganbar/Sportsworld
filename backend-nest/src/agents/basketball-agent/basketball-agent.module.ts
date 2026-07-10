@@ -10,5 +10,6 @@ import { AgentsCommonModule } from '../common/agents-common.module';
   imports: [GamesModule, StatsModule, TranslationsModule, AgentsCommonModule],
   controllers: [BasketballAgentController],
   providers: [BasketballAgentService],
+  exports: [BasketballAgentService],
 })
 export class BasketballAgentModule {}

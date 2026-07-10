@@ -57,6 +57,7 @@ model Team {
   awayResults   MatchResult[] @relation("AwayResultTeam")
   injuries      Injury[]
   lineups       Lineup[]
+  statisticsAnalyses StatisticsAnalysis[]
 }
 
 model Player {
@@ -91,6 +92,7 @@ model Game {
   lineups       Lineup[]
   quarterScores QuarterScore[]
   analyses      MatchAnalysis[]
+  predictions   PredictionAnalysis[]
 
   // Doubles as the scraper's natural key for upserts.
   @@unique([sport, competition, kickoff, homeTeamId, awayTeamId])
@@ -160,6 +162,7 @@ model TennisPlayer {
   matchesAsP1 TennisMatch[] @relation("P1")
   matchesAsP2 TennisMatch[] @relation("P2")
   wonMatches  TennisMatch[] @relation("Winner")
+  statisticsAnalyses StatisticsAnalysis[]
 }
 
 model TennisMatch {
@@ -177,8 +180,9 @@ model TennisMatch {
   winner     TennisPlayer? @relation("Winner", fields: [winnerId], references: [id], onDelete: SetNull)
   winnerId   Int?
 
-  sets     TennisSet[]
-  analyses MatchAnalysis[]
+  sets        TennisSet[]
+  analyses    MatchAnalysis[]
+  predictions PredictionAnalysis[]
 
   @@unique([tour, tournament, round, startTime, player1Id, player2Id])
 }
@@ -236,6 +240,12 @@ model TransferStory {
   toClub               String
   status               TransferStatus @default(rumor)
   estimatedProbability Int?
+  // Transfer Agent's (Phase 8) 1-2 sentence synthesis across every report
+  // attached to this story. English-only for now — unlike MatchAnalysis,
+  // a story is one row shared across all readers rather than duplicated
+  // per language, so per-language summaries would need a separate table;
+  // not worth it until the Transfer Center frontend actually needs it.
+  aiSummary            String?
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
@@ -335,4 +345,67 @@ model MatchAnalysis {
 
   @@unique([gameId, language])
   @@unique([tennisMatchId, language])
+}
+
+// Statistics Agent (Phase 8) — a real-data-only narrative digest of one
+// team's or player's form, keyed the same dual-nullable way MatchAnalysis
+// keys per-game rows (exactly one of teamId/tennisPlayerId populated per
+// row). Deliberately no probability fields here — that's Prediction
+// Agent's job; this table is form/H2H commentary only.
+model StatisticsAnalysis {
+  id             Int      @id @default(autoincrement())
+  sport          String // "football" | "basketball" | "tennis"
+  team           Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId         Int?
+  tennisPlayer   TennisPlayer? @relation(fields: [tennisPlayerId], references: [id], onDelete: Cascade)
+  tennisPlayerId Int?
+  language       String   @default("en")
+  summary        String
+  keyPoints      String[]
+  confidence     Confidence
+  model          String
+  createdAt      DateTime @default(now())
+
+  @@unique([teamId, language])
+  @@unique([tennisPlayerId, language])
+}
+
+// Prediction Agent (Phase 8) — the general cross-sport synthesis tool
+// (confirmed scope: it independently re-predicts a matchup from
+// Statistics Agent's data, for ANY sport including football/basketball/
+// tennis, rather than only covering sports without a dedicated agent).
+// Keyed exactly like MatchAnalysis (one of gameId/tennisMatchId per row).
+// probabilities is Json because football is 3-way and basketball/tennis
+// are 2-way — see prediction-agent.schema.ts for the two Zod shapes that
+// get normalized into it.
+model PredictionAnalysis {
+  id            Int          @id @default(autoincrement())
+  sport         String
+  game          Game?        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId        Int?
+  tennisMatch   TennisMatch? @relation(fields: [tennisMatchId], references: [id], onDelete: Cascade)
+  tennisMatchId Int?
+  language      String       @default("en")
+  prediction    String
+  keyFactors    String[]
+  probabilities Json
+  confidence    Confidence
+  model         String
+  createdAt     DateTime     @default(now())
+
+  @@unique([gameId, language])
+  @@unique([tennisMatchId, language])
+}
+
+// Master Agent (Phase 8) — the tool-use-loop synthesis report, cached on a
+// hash of the free-text query since (unlike every other agent) its subject
+// isn't a game/team/player ID but an arbitrary user question.
+model MasterReport {
+  id         Int      @id @default(autoincrement())
+  queryHash  String   @unique
+  queryText  String
+  language   String   @default("en")
+  reportText String
+  model      String
+  createdAt  DateTime @default(now())
 }
