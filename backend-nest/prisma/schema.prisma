@@ -35,6 +35,13 @@ enum Confidence {
   high
 }
 
+enum TransferStatus {
+  rumor
+  official
+  completed
+  denied
+}
+
 model Team {
   id           Int      @id @default(autoincrement())
   sport        Sport    @default(football)
@@ -197,6 +204,96 @@ model User {
   name      String
   avatarUrl String?
   createdAt DateTime @default(now())
+}
+
+// Shared by Transfer and News (Phase 5 schema; the agents that populate
+// these are Phase 8, not built yet) — a real outlet like "Sky Sports" or a
+// named reporter plausibly breaks both transfer rumors and general news, so
+// one credibility concept is reused rather than duplicated per domain.
+// credibilityScore is 0-100, ranked by the Transfer Agent per the source
+// spec's "rank source credibility" requirement — no real sources are seeded
+// here, that's a real-world editorial judgment call for whenever Phase 8
+// actually needs one, not something to fabricate now.
+model ContentSource {
+  id               Int      @id @default(autoincrement())
+  name             String   @unique
+  url              String?
+  credibilityScore Int      @default(50)
+  createdAt        DateTime @default(now())
+
+  transferReports TransferReport[]
+  newsArticles    NewsArticle[]
+}
+
+// Canonical grouping a raw TransferReport belongs to — this is what "merge
+// duplicate reports" structurally requires: without a grouping concept,
+// dedup logic has nothing to attach its result to. estimatedProbability is
+// null until an agent actually scores it (Phase 8), not a placeholder guess.
+model TransferStory {
+  id                   Int            @id @default(autoincrement())
+  playerName           String
+  fromClub             String?
+  toClub               String
+  status               TransferStatus @default(rumor)
+  estimatedProbability Int?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  reports TransferReport[]
+
+  @@index([playerName])
+}
+
+// One raw report from one source — several of these merge into one
+// TransferStory once a dedup pass (Phase 8) identifies them as the same
+// rumor. storyId is nullable so a freshly-scraped report can exist before
+// it's been matched to (or started) a story.
+model TransferReport {
+  id          Int            @id @default(autoincrement())
+  story       TransferStory? @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  storyId     Int?
+  source      ContentSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceId    Int
+  playerName  String
+  fromClub    String?
+  toClub      String
+  status      TransferStatus @default(rumor)
+  description String
+  sourceUrl   String
+  reportedAt  DateTime
+  createdAt   DateTime       @default(now())
+
+  @@index([storyId])
+}
+
+// Canonical grouping for deduped news coverage of the same event — same
+// role as TransferStory but for NewsArticle. `sport` is a loose string tag
+// rather than a hard FK to the Sport enum (football/basketball only) since
+// news can cover tennis, other sports, or nothing sport-specific at all.
+model NewsStoryCluster {
+  id        Int      @id @default(autoincrement())
+  headline  String
+  summary   String?
+  sport     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  articles NewsArticle[]
+}
+
+model NewsArticle {
+  id          Int               @id @default(autoincrement())
+  cluster     NewsStoryCluster? @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+  clusterId   Int?
+  source      ContentSource     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceId    Int
+  title       String
+  url         String            @unique
+  summary     String?
+  publishedAt DateTime
+  createdAt   DateTime          @default(now())
+
+  @@index([clusterId])
 }
 
 // English -> Hebrew dictionary, sport-agnostic. Falls back to sourceText
