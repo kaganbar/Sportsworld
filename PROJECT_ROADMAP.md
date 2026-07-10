@@ -3,6 +3,9 @@
 Living document tracking what's built, what's deliberately deferred, and what's
 still undecided. See `CLAUDE.md` for architecture/commands (currently written
 against the Django-era Phase 3 state — the NestJS pivot below post-dates it).
+See `ARCHITECTURE.md` for the v2 platform expansion (Next.js frontend, 5 new
+AI agents, auth, Redis, Transfer/News Centers) — this file's "Known gaps" and
+"Possible next steps" sections below are being superseded by that plan.
 
 ## Done
 
@@ -61,8 +64,10 @@ new is being built there.
 - **Auth (JWT + Google) is deferred** — no feature yet strictly requires user
   identity.
 - **Tauri desktop shell is deferred** — explicitly decided against when the
-  NestJS pivot was confirmed ("target the web app for now"). If revisited:
-  wrap the existing React/Vite frontend, don't rewrite it in Next.js.
+  NestJS pivot was confirmed ("target the web app for now"). **Superseded
+  2026-07-10:** the frontend is now being migrated to Next.js (see
+  `ARCHITECTURE.md`), reversing the earlier "don't rewrite in Next.js"
+  guidance — if Tauri comes back into scope, it would wrap `frontend-next/`.
 - **"Other Sports" (baseball, volleyball) are nav-only placeholders** — no
   data model or pages built.
 - **Only 1 scraper source (365scores.com)** — the `Parser` interface is
