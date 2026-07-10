@@ -43,14 +43,21 @@ export class AgentCallerService {
     }
 
     const client = new Anthropic({ apiKey: this.apiKey });
-    const response = await client.messages.parse({
-      model: this.model,
-      max_tokens: 2048,
-      thinking: { type: 'adaptive' },
-      output_config: { effort: 'medium', format: zodOutputFormat(opts.outputSchema) },
-      system: opts.system,
-      messages: [{ role: 'user', content: JSON.stringify(opts.context) }],
-    });
+    let response;
+    try {
+      response = await client.messages.parse({
+        model: this.model,
+        max_tokens: 2048,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'medium', format: zodOutputFormat(opts.outputSchema) },
+        system: opts.system,
+        messages: [{ role: 'user', content: JSON.stringify(opts.context) }],
+      });
+    } catch (err) {
+      // Surface the real reason (bad key, no credit, rate limit, network) as
+      // a clean 503 instead of letting the raw SDK error bubble up as a 500.
+      throw new AnalysisUnavailableError(`AI analysis is temporarily unavailable: ${(err as Error).message}`);
+    }
 
     if (response.stop_reason === 'refusal') {
       throw new AnalysisUnavailableError('Analysis temporarily unavailable for this match.');
