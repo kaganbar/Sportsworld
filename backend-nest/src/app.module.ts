@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './redis/redis.module';
 import { TranslationsModule } from './translations/translations.module';
 import { StatsModule } from './stats/stats.module';
 import { GamesModule } from './games/games.module';
@@ -30,6 +31,7 @@ import { TransfersModule } from './transfers/transfers.module';
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     PrismaModule,
+    RedisModule,
     TranslationsModule,
     StatsModule,
     GamesModule,

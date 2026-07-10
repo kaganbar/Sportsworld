@@ -2,18 +2,28 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatsService } from '../stats/stats.service';
 import { TranslationsService } from '../translations/translations.service';
+import { RedisService } from '../redis/redis.service';
 import { Lang } from '../common/lang.decorator';
 
 // Response shapes use snake_case keys deliberately — the frontend's
 // lib/api.ts TypeScript interfaces were written against the Django/DRF
 // responses (snake_case is DRF's default), and are being reused unchanged
 // against this new backend, so the wire format must match exactly.
+
+// Short read-through cache TTL for the hot "today's games" list (Phase 9 /
+// ARCHITECTURE.md's Redis role #2). Safe to cache briefly even though scores
+// change live: the frontend only calls this once per page load, then merges
+// live updates on top via the WebSocket hook (useLiveGame.ts) — it never
+// re-polls this endpoint to see score changes.
+const GAMES_TODAY_CACHE_TTL_SECONDS = 20;
+
 @Injectable()
 export class GamesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stats: StatsService,
     private readonly translations: TranslationsService,
+    private readonly redis: RedisService,
   ) {}
 
   async teamDto(team: { id: number; name: string; shortName: string; country: string; primaryColor: string }, lang: Lang) {
@@ -48,6 +58,10 @@ export class GamesService {
   }
 
   async gamesToday(sport: 'football' | 'basketball', lang: Lang) {
+    const cacheKey = `games:today:${sport}:${lang}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
@@ -58,7 +72,10 @@ export class GamesService {
       include: { homeTeam: true, awayTeam: true },
       orderBy: { kickoff: 'asc' },
     });
-    return Promise.all(games.map((g) => this.gameListDto(g, lang)));
+    const dtos = await Promise.all(games.map((g) => this.gameListDto(g, lang)));
+
+    await this.redis.set(cacheKey, JSON.stringify(dtos), GAMES_TODAY_CACHE_TTL_SECONDS);
+    return dtos;
   }
 
   private async resultDto(r: { date: Date; competition: string; homeTeam: any; awayTeam: any; homeScore: number; awayScore: number }, lang: Lang) {

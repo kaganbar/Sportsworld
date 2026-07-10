@@ -1,7 +1,7 @@
-import { Controller, Get, Param, ParseIntPipe, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus, Param, ParseIntPipe, ServiceUnavailableException } from '@nestjs/common';
 import { BasketballAgentService } from './basketball-agent.service';
 import { LangParam, Lang } from '../../common/lang.decorator';
-import { AnalysisUnavailableError } from '../common/agent-caller.service';
+import { AnalysisUnavailableError, RateLimitExceededError } from '../common/agent-caller.service';
 
 // Mounted at /api/basketball/games/:id/analysis — same prefix as
 // BasketballController, a distinct sub-path so registration order doesn't matter.
@@ -26,6 +26,9 @@ export class BasketballAgentController {
         created_at: analysis.createdAt.toISOString(),
       };
     } catch (err) {
+      if (err instanceof RateLimitExceededError) {
+        throw new HttpException(err.message, HttpStatus.TOO_MANY_REQUESTS);
+      }
       if (err instanceof AnalysisUnavailableError) {
         throw new ServiceUnavailableException(err.message);
       }

@@ -1,7 +1,7 @@
-import { BadRequestException, Controller, Get, Param, ParseIntPipe, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Controller, Get, HttpException, HttpStatus, Param, ParseIntPipe, ServiceUnavailableException } from '@nestjs/common';
 import { StatisticsAgentService, StatsSport } from './statistics-agent.service';
 import { LangParam, Lang } from '../../common/lang.decorator';
-import { AnalysisUnavailableError } from '../common/agent-caller.service';
+import { AnalysisUnavailableError, RateLimitExceededError } from '../common/agent-caller.service';
 
 const VALID_SPORTS: StatsSport[] = ['football', 'basketball', 'tennis'];
 
@@ -30,6 +30,9 @@ export class StatisticsAgentController {
         created_at: analysis.createdAt.toISOString(),
       };
     } catch (err) {
+      if (err instanceof RateLimitExceededError) {
+        throw new HttpException(err.message, HttpStatus.TOO_MANY_REQUESTS);
+      }
       if (err instanceof AnalysisUnavailableError) {
         throw new ServiceUnavailableException(err.message);
       }

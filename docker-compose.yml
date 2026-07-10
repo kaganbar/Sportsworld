@@ -65,9 +65,13 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sportsworld}:${POSTGRES_PASSWORD:-sportsworld}@db:5432/sportsworld_nest
       PORT: 8001
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
     build: ./frontend

@@ -1,14 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
+import { GAME_TICKS_CHANNEL } from '../redis/redis-channels';
 
 const MAX_QUARTERS = 4;
 
 // Ticks simulated live state for every status="live" game/match, broadcasting
-// each change via EventEmitter2 -> LiveGateway so connected WebSocket clients
-// see it without polling. Mirrors games/management/commands/run_live_ticker.py
+// each change via Redis pub/sub -> LiveGateway (on every backend instance) so
+// connected WebSocket clients see it without polling. Mirrors
+// games/management/commands/run_live_ticker.py
 // tick-for-tick (same odds, same finish conditions) so the two backends are
 // comparable side by side during the migration. Uses Math.random() rather
 // than a seeded PRNG deliberately — like Django's `random.Random()` (unseeded),
@@ -27,7 +29,7 @@ export class SimulatedTickerService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly events: EventEmitter2,
+    private readonly redis: RedisService,
     private readonly config: ConfigService,
   ) {}
 
@@ -38,7 +40,7 @@ export class SimulatedTickerService {
   }
 
   private emit(gameKey: string, payload: unknown) {
-    this.events.emit('game.tick', { gameKey, payload });
+    this.redis.publish(GAME_TICKS_CHANNEL, JSON.stringify({ gameKey, payload }));
   }
 
   private async tickFootball() {

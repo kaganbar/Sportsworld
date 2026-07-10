@@ -1,20 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
+import { GAME_TICKS_CHANNEL } from '../redis/redis-channels';
 import { NormalizedEvent } from './parsers/parser.interface';
 
 // Maps a source-agnostic NormalizedEvent onto our Prisma schema via
-// upserts keyed on each model's natural key, then emits the same
-// 'game.tick' event SimulatedTickerService uses — LiveGateway doesn't know
-// or care whether a tick came from the scraper or the simulator.
+// upserts keyed on each model's natural key, then publishes the same
+// Redis 'game-ticks' channel SimulatedTickerService uses — LiveGateway
+// doesn't know or care whether a tick came from the scraper or the simulator.
 @Injectable()
 export class NormalizeService {
   private readonly logger = new Logger(NormalizeService.name);
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly events: EventEmitter2,
+    private readonly redis: RedisService,
   ) {}
+
+  private publishTick(gameKey: string, payload: unknown) {
+    this.redis.publish(GAME_TICKS_CHANNEL, JSON.stringify({ gameKey, payload }));
+  }
 
   async upsertEvent(event: NormalizedEvent): Promise<void> {
     if (event.sport === 'tennis') {
@@ -114,15 +119,12 @@ export class NormalizeService {
         existing.minute !== game.minute;
 
       if (changed && game.status === 'live') {
-        this.events.emit('game.tick', {
-          gameKey: `game-football-${game.id}`,
-          payload: {
-            minute: game.minute,
-            home_score: game.homeScore,
-            away_score: game.awayScore,
-            status: game.status,
-            event: null,
-          },
+        this.publishTick(`game-football-${game.id}`, {
+          minute: game.minute,
+          home_score: game.homeScore,
+          away_score: game.awayScore,
+          status: game.status,
+          event: null,
         });
       }
       return;
@@ -146,17 +148,14 @@ export class NormalizeService {
       !existing || existing.status !== game.status || existing.homeScore !== game.homeScore || existing.awayScore !== game.awayScore;
 
     if (changed && game.status === 'live' && latestQuarter) {
-      this.events.emit('game.tick', {
-        gameKey: `game-basketball-${game.id}`,
-        payload: {
-          home_score: game.homeScore,
-          away_score: game.awayScore,
-          quarter: latestQuarter.quarter,
-          quarter_home_score: latestQuarter.homeScore,
-          quarter_away_score: latestQuarter.awayScore,
-          status: game.status,
-          event: null,
-        },
+      this.publishTick(`game-basketball-${game.id}`, {
+        home_score: game.homeScore,
+        away_score: game.awayScore,
+        quarter: latestQuarter.quarter,
+        quarter_home_score: latestQuarter.homeScore,
+        quarter_away_score: latestQuarter.awayScore,
+        status: game.status,
+        event: null,
       });
     }
   }
@@ -235,14 +234,11 @@ export class NormalizeService {
 
     const changed = !existing || existing.status !== match.status;
     if (changed && match.status === 'live' && latestSet) {
-      this.events.emit('game.tick', {
-        gameKey: `match-tennis-${match.id}`,
-        payload: {
-          set_number: latestSet.setNumber,
-          player1_games: latestSet.player1Games,
-          player2_games: latestSet.player2Games,
-          status: match.status,
-        },
+      this.publishTick(`match-tennis-${match.id}`, {
+        set_number: latestSet.setNumber,
+        player1_games: latestSet.player1Games,
+        player2_games: latestSet.player2Games,
+        status: match.status,
       });
     }
   }

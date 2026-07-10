@@ -5,8 +5,15 @@ import Anthropic from '@anthropic-ai/sdk';
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RedisService } from '../../redis/redis.service';
 import { Lang } from '../../common/lang.decorator';
-import { AnalysisUnavailableError } from '../common/agent-caller.service';
+import {
+  AnalysisUnavailableError,
+  RateLimitExceededError,
+  RATE_LIMIT_BUCKET,
+  RATE_LIMIT_MAX_CALLS,
+  RATE_LIMIT_WINDOW_SECONDS,
+} from '../common/agent-caller.service';
 import { FootballAgentService } from '../football-agent/football-agent.service';
 import { BasketballAgentService } from '../basketball-agent/basketball-agent.service';
 import { TennisAgentService } from '../tennis-agent/tennis-agent.service';
@@ -69,6 +76,7 @@ export class MasterAgentService {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly football: FootballAgentService,
     private readonly basketball: BasketballAgentService,
     private readonly tennis: TennisAgentService,
@@ -168,6 +176,15 @@ export class MasterAgentService {
         throw new AnalysisUnavailableError(
           'AI analysis is not configured — set ANTHROPIC_API_KEY, or set AI_AGENT_MODE=mock to use simulated analysis.',
         );
+      }
+
+      // This top-level call bypasses AgentCallerService (Master Agent has
+      // its own tool-loop calling logic), so it needs its own rate-limit
+      // check against the same shared bucket every other live agent call
+      // uses — see agent-caller.service.ts's RateLimitExceededError.
+      const allowed = await this.redis.checkRateLimit(RATE_LIMIT_BUCKET, RATE_LIMIT_MAX_CALLS, RATE_LIMIT_WINDOW_SECONDS);
+      if (!allowed) {
+        throw new RateLimitExceededError('Too many AI analysis requests right now — please try again shortly.');
       }
 
       const client = new Anthropic({ apiKey: this.apiKey });

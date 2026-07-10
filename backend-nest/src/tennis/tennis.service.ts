@@ -2,7 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatsService } from '../stats/stats.service';
 import { TranslationsService } from '../translations/translations.service';
+import { RedisService } from '../redis/redis.service';
 import { Lang } from '../common/lang.decorator';
+
+// Same read-through cache role/rationale as GamesService.gamesToday — see
+// its comment for why a short TTL is safe alongside live WebSocket ticking.
+const MATCHES_TODAY_CACHE_TTL_SECONDS = 20;
 
 @Injectable()
 export class TennisService {
@@ -10,6 +15,7 @@ export class TennisService {
     private readonly prisma: PrismaService,
     private readonly stats: StatsService,
     private readonly translations: TranslationsService,
+    private readonly redis: RedisService,
   ) {}
 
   private async playerDto(p: { id: number; name: string; country: string; tour: string; ranking: number | null }, lang: Lang) {
@@ -54,6 +60,10 @@ export class TennisService {
   }
 
   async matchesToday(lang: Lang) {
+    const cacheKey = `tennis:matches:today:${lang}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
@@ -64,7 +74,10 @@ export class TennisService {
       include: { player1: true, player2: true },
       orderBy: { startTime: 'asc' },
     });
-    return Promise.all(matches.map((m) => this.matchListDto(m, lang)));
+    const dtos = await Promise.all(matches.map((m) => this.matchListDto(m, lang)));
+
+    await this.redis.set(cacheKey, JSON.stringify(dtos), MATCHES_TODAY_CACHE_TTL_SECONDS);
+    return dtos;
   }
 
   async matchDetail(id: number, lang: Lang) {

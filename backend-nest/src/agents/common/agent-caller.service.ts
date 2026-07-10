@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { ZodType } from 'zod';
+import { RedisService } from '../../redis/redis.service';
 
 // Shared Claude-calling plumbing reused by every sport agent (Football,
 // Basketball, Tennis, ...). Each agent supplies its own system prompt, Zod
@@ -11,13 +12,28 @@ import { ZodType } from 'zod';
 // agents don't each hand-roll it. Mirrors ai_common/service.py::call_agent.
 export class AnalysisUnavailableError extends Error {}
 
+// Thrown only on a live (real, paid) call — never in mock mode, and never
+// on a cache hit, since callers check their own cache before reaching here.
+// See ARCHITECTURE.md's Redis role #3: protect overall spend, not
+// per-client abuse, hence a single global bucket rather than per-IP.
+export class RateLimitExceededError extends Error {}
+
+// Exported so Master Agent (which bypasses this service for its own
+// top-level toolRunner call) can share the exact same bucket/limit/window.
+export const RATE_LIMIT_BUCKET = 'anthropic-live-calls';
+export const RATE_LIMIT_MAX_CALLS = 20;
+export const RATE_LIMIT_WINDOW_SECONDS = 60;
+
 @Injectable()
 export class AgentCallerService {
   private readonly apiKey: string;
   private readonly model: string;
   private readonly mockMode: boolean;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly redis: RedisService,
+  ) {
     this.apiKey = this.config.get<string>('ANTHROPIC_API_KEY', '');
     this.model = this.config.get<string>('ANTHROPIC_MODEL', 'claude-opus-4-8');
     const defaultMode = this.apiKey ? 'live' : 'mock';
@@ -40,6 +56,11 @@ export class AgentCallerService {
       throw new AnalysisUnavailableError(
         'AI analysis is not configured — set ANTHROPIC_API_KEY, or set AI_AGENT_MODE=mock to use simulated analysis.',
       );
+    }
+
+    const allowed = await this.redis.checkRateLimit(RATE_LIMIT_BUCKET, RATE_LIMIT_MAX_CALLS, RATE_LIMIT_WINDOW_SECONDS);
+    if (!allowed) {
+      throw new RateLimitExceededError('Too many AI analysis requests right now — please try again shortly.');
     }
 
     const client = new Anthropic({ apiKey: this.apiKey });

@@ -1,7 +1,7 @@
-import { BadRequestException, Body, Controller, Post, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, HttpException, HttpStatus, Post, ServiceUnavailableException } from '@nestjs/common';
 import { MasterAgentService } from './master-agent.service';
 import { LangParam, Lang } from '../../common/lang.decorator';
-import { AnalysisUnavailableError } from '../common/agent-caller.service';
+import { AnalysisUnavailableError, RateLimitExceededError } from '../common/agent-caller.service';
 
 @Controller('agents/master-agent')
 export class MasterAgentController {
@@ -16,6 +16,9 @@ export class MasterAgentController {
     try {
       return await this.masterAgent.answerQuery(query, lang);
     } catch (err) {
+      if (err instanceof RateLimitExceededError) {
+        throw new HttpException(err.message, HttpStatus.TOO_MANY_REQUESTS);
+      }
       if (err instanceof AnalysisUnavailableError) {
         throw new ServiceUnavailableException(err.message);
       }

@@ -1,9 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { OnEvent } from '@nestjs/event-emitter';
 import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
 import { WebSocket, WebSocketServer } from 'ws';
+import { RedisService } from '../redis/redis.service';
+import { GAME_TICKS_CHANNEL } from '../redis/redis-channels';
 
 const GAME_PATH = /^\/ws\/games\/(football|basketball)\/(\d+)\/?$/;
 const TENNIS_PATH = /^\/ws\/tennis\/(\d+)\/?$/;
@@ -36,9 +37,28 @@ export class LiveGateway implements OnModuleInit {
   private readonly wss = new WebSocketServer({ noServer: true });
   private readonly subscriptions = new Map<string, Set<TrackedClient>>();
 
-  constructor(private readonly adapterHost: HttpAdapterHost) {}
+  constructor(
+    private readonly adapterHost: HttpAdapterHost,
+    private readonly redis: RedisService,
+  ) {}
 
   onModuleInit() {
+    // Subscribing here (rather than to a local EventEmitter2 event) is what
+    // makes this work across multiple backend instances: a tick published by
+    // whichever instance's scraper/simulator produced it reaches every
+    // instance's subscriber, so it can fan out to whatever clients are
+    // connected to it specifically — no shared in-process state needed.
+    this.redis.subscribe(GAME_TICKS_CHANNEL, (message) => {
+      let parsed: { gameKey: string; payload: unknown };
+      try {
+        parsed = JSON.parse(message);
+      } catch {
+        this.logger.warn(`Discarding malformed tick message: ${message.slice(0, 100)}`);
+        return;
+      }
+      this.broadcast(parsed.gameKey, parsed.payload);
+    });
+
     const httpServer = this.adapterHost.httpAdapter.getHttpServer();
 
     httpServer.on('upgrade', (request: IncomingMessage, socket: Duplex, head: Buffer) => {
@@ -64,8 +84,7 @@ export class LiveGateway implements OnModuleInit {
     });
   }
 
-  @OnEvent('game.tick')
-  handleTick({ gameKey, payload }: { gameKey: string; payload: unknown }) {
+  private broadcast(gameKey: string, payload: unknown) {
     const clients = this.subscriptions.get(gameKey);
     if (!clients || clients.size === 0) return;
     const message = JSON.stringify(payload);
