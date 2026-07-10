@@ -179,7 +179,7 @@ scraper needed a concrete target — not guessed in advance.
 | Their phase | Status |
 |---|---|
 | 2. Project setup | **Done** — `frontend-next/` scaffolded (Next.js 14 App Router, Tailwind, shadcn/ui, Dockerized on :3000), `auth/` module skeleton registered in `backend-nest` |
-| 3. Frontend | Not started — Next.js port of existing pages + new modules (Transfer Center, News Center, AI Center, Profile, Settings) |
+| 3. Frontend | **Done** — every page ported to Next.js App Router, redesigned in Tailwind/shadcn (not just a framework port), plus 5 new "coming soon" module placeholders reachable from a new `SiteHeader` nav |
 | 4. Backend | Mostly done — NestJS/Prisma/Postgres already the active stack; new work is `auth/` + 5 new agent modules |
 | 5. Database | Mostly done — existing schema covers football/basketball/tennis; new models needed for `User`, transfer reports/story-groups, news reports/story-groups |
 | 6. Sports APIs | Done for live scores (365scores.com scraper) — no source chosen yet for transfer/news data |
