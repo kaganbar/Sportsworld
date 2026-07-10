@@ -1,0 +1,47 @@
+# Production image for Railway. Alongside the existing dev-only Dockerfile
+# (bind-mounted source + `nest start --watch`), not a replacement — that one
+# keeps serving local `docker compose up` exactly as it does today.
+#
+# Same node:22-slim base as the dev Dockerfile (not alpine) — this project
+# hasn't verified Prisma's query engine against musl libc, and there's no
+# reason to introduce that risk for a first production deploy.
+
+# ---- Build stage ----
+FROM node:22-slim AS builder
+
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+RUN npx prisma generate
+RUN npm run build
+
+# ---- Runtime stage ----
+FROM node:22-slim
+
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Copy the builder's already-generated node_modules wholesale (rather than a
+# fresh `npm ci --omit=dev` here) — the standard, foolproof way to guarantee
+# the copied Prisma client matches the schema it was generated against.
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY package.json ./
+
+EXPOSE 8001
+
+# `prisma migrate deploy` is the non-interactive, production-safe migration
+# command (never `migrate dev`, which can prompt for confirmation) — this
+# applies any pending migration before the app starts serving traffic.
+# Entry point is dist/src/main.js, not dist/main.js — nest-cli.json's
+# sourceRoot: "src" means the build preserves the src/ folder inside dist/.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]

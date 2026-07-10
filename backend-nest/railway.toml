@@ -1,0 +1,11 @@
+# Pins the production build config as code rather than a one-off dashboard
+# setting. Set this service's "Root Directory" to `backend-nest` when
+# creating it in Railway — see DEPLOYMENT.md.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.prod"
+
+[deploy]
+healthcheckPath = "/api/health"
+restartPolicyType = "ON_FAILURE"

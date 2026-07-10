@@ -20,11 +20,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly config: ConfigService) {}
 
   onModuleInit() {
+    // Local dev (docker-compose) sets REDIS_HOST/REDIS_PORT; a hosted
+    // managed Redis (e.g. Railway's plugin) injects a single REDIS_URL
+    // connection string instead. Prefer REDIS_URL when present — local dev
+    // behavior is unchanged either way.
+    const url = this.config.get<string>('REDIS_URL', '');
     const host = this.config.get<string>('REDIS_HOST', 'localhost');
     const port = this.config.get<number>('REDIS_PORT', 6379);
 
-    this.client = new Redis({ host, port, lazyConnect: false });
-    this.subscriber = new Redis({ host, port, lazyConnect: false });
+    this.client = url ? new Redis(url) : new Redis({ host, port, lazyConnect: false });
+    this.subscriber = url ? new Redis(url) : new Redis({ host, port, lazyConnect: false });
 
     this.client.on('error', (err) => this.logger.error(`Redis client error: ${err.message}`));
     this.subscriber.on('error', (err) => this.logger.error(`Redis subscriber error: ${err.message}`));
