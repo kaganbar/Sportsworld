@@ -16,6 +16,8 @@ frontend/dist/
 *.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+frontend-next/.next/
+frontend-next/next-env.d.ts
 
 # Editors / OS
 .vscode/
