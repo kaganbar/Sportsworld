@@ -67,6 +67,10 @@ const translations = {
       "A unified view across every AI agent — Football, Basketball, Tennis, Transfer, Statistics, News, Prediction — synthesized by a Master Agent into one coherent report.",
     desc_profile: "Sign in with Google to save favorite teams/players and personalize your feed — arriving once auth is built.",
     desc_settings: "Notification preferences, favorite teams/players, and account settings — arriving alongside the Profile module.",
+    signInWithGoogle: "Sign in with Google",
+    signOut: "Sign out",
+    welcomeBack: "Welcome back",
+    profileNote: "Favorites, personalization, and the rest of the Profile module arrive in a later phase — this just proves sign-in works.",
   },
   he: {
     tagline: "בוחרים ענף ספורט, מקבלים את משחקי היום וניתוח AI לכל משחק.",
@@ -123,6 +127,10 @@ const translations = {
       "תצוגה מאוחדת של כל סוכני ה-AI — כדורגל, כדורסל, טניס, מעברים, סטטיסטיקה, חדשות, חיזויים — מסונתזת על ידי סוכן ראשי לדוח אחד קוהרנטי.",
     desc_profile: "התחברות עם Google לשמירת קבוצות/שחקנים מועדפים והתאמה אישית של הפיד — בקרוב, לאחר בניית מערכת ההתחברות.",
     desc_settings: "העדפות התראות, קבוצות/שחקנים מועדפים והגדרות חשבון — בקרוב, יחד עם מודול הפרופיל.",
+    signInWithGoogle: "התחברות עם Google",
+    signOut: "התנתקות",
+    welcomeBack: "ברוך שובך",
+    profileNote: "מועדפים, התאמה אישית ושאר מודול הפרופיל יגיעו בשלב מאוחר יותר — זה רק מוכיח שההתחברות עובדת.",
   },
 } as const;
 

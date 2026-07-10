@@ -1,15 +1,19 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { JwtStrategy } from './strategies/jwt.strategy';
 
-// Phase 2 skeleton only — registered now so Phase 4 (Backend) has a
-// starting point rather than creating the module from scratch. Phase 4
-// adds: strategies/google.strategy.ts, strategies/jwt.strategy.ts,
-// guards/jwt-auth.guard.ts, the User Prisma model, and the real
-// service/controller logic. See ARCHITECTURE.md's Auth section.
+// JwtModule is registered here with no global secret/signOptions — every
+// sign()/verify() call in AuthService passes its own secret explicitly
+// (access vs refresh use different secrets), so a single module-level
+// default would be misleading.
 @Module({
+  imports: [PassportModule, JwtModule.register({})],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, GoogleStrategy, JwtStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

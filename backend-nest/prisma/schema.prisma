@@ -187,6 +187,18 @@ model TennisSet {
   @@unique([matchId, setNumber])
 }
 
+// Auth (Phase 4) — Google OAuth is the only identity source for now, so
+// googleId is required rather than nullable; if a second auth method is
+// ever added, that's the point to make it optional and add a discriminator.
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  googleId  String   @unique
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+}
+
 // English -> Hebrew dictionary, sport-agnostic. Falls back to sourceText
 // when no entry exists (see TranslationsService).
 model NameTranslation {
