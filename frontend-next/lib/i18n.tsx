@@ -75,6 +75,8 @@ const translations = {
     newsLoading: "Loading headlines...",
     newsEmpty: "No headlines yet.",
     readMore: "Read more",
+    transfersRawNote: "Raw rumors from Transfermarkt — story-grouping/dedup and our own AI-estimated probability arrive with the Transfer Agent (Phase 8). % shown is Transfermarkt's own community assessment.",
+    transfersEmpty: "No rumors yet.",
   },
   he: {
     tagline: "בוחרים ענף ספורט, מקבלים את משחקי היום וניתוח AI לכל משחק.",
@@ -139,6 +141,8 @@ const translations = {
     newsLoading: "טוען כותרות...",
     newsEmpty: "אין כותרות עדיין.",
     readMore: "קרא עוד",
+    transfersRawNote: "שמועות גולמיות מ-Transfermarkt — קיבוץ סיפורים/ניקוי כפילויות והסתברות משוערת משלנו יגיעו עם סוכן המעברים (שלב 8). האחוז המוצג הוא הערכת הקהילה של Transfermarkt עצמה.",
+    transfersEmpty: "אין שמועות עדיין.",
   },
 } as const;
 

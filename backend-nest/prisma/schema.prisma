@@ -249,19 +249,24 @@ model TransferStory {
 // rumor. storyId is nullable so a freshly-scraped report can exist before
 // it's been matched to (or started) a story.
 model TransferReport {
-  id          Int            @id @default(autoincrement())
-  story       TransferStory? @relation(fields: [storyId], references: [id], onDelete: SetNull)
-  storyId     Int?
-  source      ContentSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  sourceId    Int
-  playerName  String
-  fromClub    String?
-  toClub      String
-  status      TransferStatus @default(rumor)
-  description String
-  sourceUrl   String
-  reportedAt  DateTime
-  createdAt   DateTime       @default(now())
+  id                 Int            @id @default(autoincrement())
+  story              TransferStory? @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  storyId            Int?
+  source             ContentSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceId           Int
+  playerName         String
+  fromClub           String?
+  toClub             String
+  status             TransferStatus @default(rumor)
+  description        String
+  sourceUrl          String         @unique
+  // A source's own published probability for this rumor (e.g. Transfermarkt's
+  // "user assessment" %), distinct from TransferStory.estimatedProbability
+  // which is our own agent's estimate (Phase 8) — kept separate so a real
+  // data point isn't conflated with something we haven't computed yet.
+  sourceProbability  Int?
+  reportedAt         DateTime
+  createdAt          DateTime       @default(now())
 
   @@index([storyId])
 }

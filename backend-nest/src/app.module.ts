@@ -16,6 +16,7 @@ import { WebsocketsModule } from './websockets/websockets.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { AuthModule } from './auth/auth.module';
 import { NewsModule } from './news/news.module';
+import { TransfersModule } from './transfers/transfers.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { NewsModule } from './news/news.module';
     ScraperModule,
     AuthModule,
     NewsModule,
+    TransfersModule,
   ],
   controllers: [AppController],
 })

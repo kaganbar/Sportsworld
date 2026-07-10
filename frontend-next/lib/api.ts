@@ -212,3 +212,20 @@ export interface NewsArticle {
 }
 
 export const fetchNews = (limit = 30) => get<NewsArticle[]>(`/api/news?limit=${limit}`);
+
+// --- Transfers (Phase 6 — raw ingested rumors, no story-grouping/dedup or our own probability estimate yet) ---
+
+export interface TransferRumour {
+  id: number;
+  player_name: string;
+  from_club: string | null;
+  to_club: string;
+  status: "rumor" | "official" | "completed" | "denied";
+  description: string;
+  source: string;
+  source_url: string;
+  source_probability: number | null;
+  reported_at: string;
+}
+
+export const fetchTransfers = (limit = 30) => get<TransferRumour[]>(`/api/transfers?limit=${limit}`);
