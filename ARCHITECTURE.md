@@ -182,7 +182,7 @@ scraper needed a concrete target — not guessed in advance.
 | 3. Frontend | **Done** — every page ported to Next.js App Router, redesigned in Tailwind/shadcn (not just a framework port), plus 5 new "coming soon" module placeholders reachable from a new `SiteHeader` nav |
 | 4. Backend | **Auth done** — Passport (Google OAuth + JWT), `User` model, `/api/auth/{google,google/callback,refresh,me}`, verified end-to-end with synthetic tokens (real Google login needs real OAuth credentials, not yet provided). 5 new agent modules are separately Phase 8 |
 | 5. Database | **Done** — `User` (Phase 4), plus `ContentSource` (shared credibility lookup), `TransferStory`/`TransferReport`, `NewsStoryCluster`/`NewsArticle` (story-grouping pattern for dedup). Schema only — no sources seeded, no agents populate these yet, that's Phase 6/8 |
-| 6. Sports APIs | Done for live scores (365scores.com scraper) — no source chosen yet for transfer/news data |
+| 6. Sports APIs | **Live scores + News done.** Live scores: 365scores.com scraper. News: NewsAPI.org `top-headlines?category=sports`, hourly, real headlines flowing into `NewsArticle`/`ContentSource` and served at `GET /api/news`, with a light real frontend on News Center (raw headlines, no AI summarization/dedup yet — that's Phase 8). Transfer rumors: still no source chosen |
 | 7. Football Agent | Done |
 | 8. Other AI Agents | Not started — General Sports, Transfer, Statistics, News, Prediction, Master |
 | 9. Realtime features | Mostly done — WebSocket live ticking works single-instance; Redis pub/sub needed for horizontal scaling |

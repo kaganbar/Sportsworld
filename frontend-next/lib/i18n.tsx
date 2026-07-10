@@ -71,6 +71,10 @@ const translations = {
     signOut: "Sign out",
     welcomeBack: "Welcome back",
     profileNote: "Favorites, personalization, and the rest of the Profile module arrive in a later phase — this just proves sign-in works.",
+    newsRawNote: "Raw headlines from NewsAPI.org — summarization, dedup clustering, and highlights arrive with the News Agent (Phase 8).",
+    newsLoading: "Loading headlines...",
+    newsEmpty: "No headlines yet.",
+    readMore: "Read more",
   },
   he: {
     tagline: "בוחרים ענף ספורט, מקבלים את משחקי היום וניתוח AI לכל משחק.",
@@ -131,6 +135,10 @@ const translations = {
     signOut: "התנתקות",
     welcomeBack: "ברוך שובך",
     profileNote: "מועדפים, התאמה אישית ושאר מודול הפרופיל יגיעו בשלב מאוחר יותר — זה רק מוכיח שההתחברות עובדת.",
+    newsRawNote: "כותרות גולמיות מ-NewsAPI.org — סיכום, איתור כפילויות והדגשות יגיעו עם סוכן החדשות (שלב 8).",
+    newsLoading: "טוען כותרות...",
+    newsEmpty: "אין כותרות עדיין.",
+    readMore: "קרא עוד",
   },
 } as const;
 

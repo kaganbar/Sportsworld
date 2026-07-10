@@ -199,3 +199,16 @@ export const fetchTennisMatchDetail = (id: string, lang: Lang = "en") =>
   get<TennisMatchDetail>(`/api/tennis/matches/${id}/?lang=${lang}`);
 export const fetchTennisAnalysis = (id: string, lang: "en" | "he" = "en") =>
   get<TennisAnalysis>(`/api/tennis/matches/${id}/analysis/?lang=${lang}`);
+
+// --- News (Phase 6 — raw ingested headlines, no AI summarization/dedup yet) ---
+
+export interface NewsArticle {
+  id: number;
+  title: string;
+  url: string;
+  summary: string | null;
+  published_at: string;
+  source: string;
+}
+
+export const fetchNews = (limit = 30) => get<NewsArticle[]>(`/api/news?limit=${limit}`);
