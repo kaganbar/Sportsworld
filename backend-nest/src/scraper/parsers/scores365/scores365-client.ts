@@ -9,6 +9,7 @@ import axios from 'axios';
 // both gives us a ready-made (English source, Hebrew translation) pair with
 // no separate translation step.
 const BASE_URL = 'https://webws.365scores.com/web/games/allscores/';
+const GAME_URL = 'https://webws.365scores.com/web/game/';
 
 const HEADERS = {
   'User-Agent':
@@ -95,6 +96,26 @@ export async function fetchAllScores(sportId: number, date: Date): Promise<AllSc
   ]);
 
   return { en: en.data, he: he.data };
+}
+
+// The allscores list endpoint above does NOT include a per-quarter/per-set
+// "stages" breakdown for basketball (confirmed: 0/26 basketball games had it,
+// scheduled or finished) — only this per-game endpoint does, and it needs
+// nothing but the gameId (no matchupId despite the site's own URLs including
+// one). Used to backfill real quarter scores that fetchAllScores can't give.
+export async function fetchGameDetail(gameId: number, langId: number): Promise<RawGame> {
+  const response = await axios.get<{ game: RawGame }>(GAME_URL, {
+    params: {
+      appTypeId: 5,
+      langId,
+      timezoneName: 'Asia/Jerusalem',
+      userCountryId: 6,
+      gameId,
+    },
+    headers: HEADERS,
+    timeout: 15000,
+  });
+  return response.data.game;
 }
 
 export function statusFromGroup(statusGroup: number): 'scheduled' | 'live' | 'finished' {
