@@ -178,7 +178,7 @@ scraper needed a concrete target — not guessed in advance.
 
 | Their phase | Status |
 |---|---|
-| 2. Project setup | Not started — scaffold `frontend-next/`, add `auth/` module skeleton |
+| 2. Project setup | **Done** — `frontend-next/` scaffolded (Next.js 14 App Router, Tailwind, shadcn/ui, Dockerized on :3000), `auth/` module skeleton registered in `backend-nest` |
 | 3. Frontend | Not started — Next.js port of existing pages + new modules (Transfer Center, News Center, AI Center, Profile, Settings) |
 | 4. Backend | Mostly done — NestJS/Prisma/Postgres already the active stack; new work is `auth/` + 5 new agent modules |
 | 5. Database | Mostly done — existing schema covers football/basketball/tennis; new models needed for `User`, transfer reports/story-groups, news reports/story-groups |
