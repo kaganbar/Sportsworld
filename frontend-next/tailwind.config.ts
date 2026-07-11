@@ -12,6 +12,17 @@ const config: Config = {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-rubik)", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
+      boxShadow: {
+        // "Premium" layered shadows — soft, diffuse, with a subtle colored
+        // glow option for accent surfaces — replacing the stock flat
+        // shadow/shadow-sm everywhere a Card/panel wants real depth.
+        soft: "0 2px 8px -2px rgb(0 0 0 / 0.15), 0 8px 24px -4px rgb(0 0 0 / 0.25)",
+        premium: "0 4px 16px -4px rgb(0 0 0 / 0.25), 0 16px 48px -8px rgb(0 0 0 / 0.35)",
+        glow: "0 0 32px -4px var(--sport-glow, var(--sport-accent, transparent))",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

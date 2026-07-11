@@ -54,6 +54,15 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  /* One canonical glassmorphism treatment — every card/panel that wants the
+     premium glass look opts into this instead of hand-rolling
+     bg-white/N + backdrop-blur-N + border per file. */
+  .glass-panel {
+    @apply border border-white/10 bg-white/5 shadow-premium backdrop-blur-xl;
   }
 }

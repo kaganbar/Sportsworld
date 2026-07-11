@@ -26,12 +26,20 @@ export default function ThemeLayout({ sport, children }: { sport: SportKey; chil
           background: theme.background,
           "--sport-accent": theme.accent,
           "--sport-accent-soft": theme.accentSoft,
+          "--sport-glow": theme.glow,
         } as CSSProperties
       }
     >
       <SportBackgroundCanvas sport={sport} />
 
-      <div className="flex items-center justify-center border-b border-white/10 bg-black/30 px-4 py-3 backdrop-blur-sm">
+      {/* Scrim: keeps the interface readable over a busier 3D background —
+          always present, distinct from the header strip's own blur below.
+          fixed (not absolute) for the same reason as the canvas itself —
+          pinned to the viewport, not stretched across a tall scrollable
+          page. */}
+      <div className="pointer-events-none fixed inset-0 -z-[5] bg-gradient-to-b from-black/30 via-black/10 to-black/35 backdrop-blur-[2px]" />
+
+      <div className="relative flex items-center justify-center border-b border-white/10 bg-black/30 px-4 py-3 backdrop-blur-sm">
         <Badge className="bg-white/15 text-white" variant="outline">
           {theme.emoji} {t(`sport_${sport}` as TKey)}
         </Badge>

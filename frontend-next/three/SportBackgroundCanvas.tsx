@@ -25,12 +25,27 @@ export default function SportBackgroundCanvas({ sport }: { sport: SportKey }) {
   if (!Scene || !hasWebGL()) return null; // CSS gradient background shows through untouched
 
   return (
-    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+    // fixed, not absolute: this must stay pinned to the viewport regardless
+    // of how tall the scrollable page content grows (a long fixture list
+    // makes ThemeLayout's wrapper much taller than one screen) — absolute
+    // positioning stretched the canvas to that full scroll height, wrecking
+    // the camera's aspect ratio and rendering mostly black. ThemeLayout's
+    // own `relative z-0` still captures this for z-index stacking purposes;
+    // position:fixed only changes what it's sized/pinned against.
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       <Canvas
         dpr={[1, 1.5]}
-        gl={{ antialias: false, powerPreference: "low-power" }}
+        gl={{ antialias: false, powerPreference: "low-power", alpha: true }}
         camera={{ position: [0, 6, 8], fov: 50 }}
-        onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
+        onCreated={({ camera, gl }) => {
+          camera.lookAt(0, 0, 0);
+          // Without this the WebGL clear color paints opaque black wherever
+          // the scene has no geometry (sky/empty space around the pitch),
+          // completely hiding the CSS gradient + scrim behind it instead of
+          // blending with them — directly undermines "always darkened
+          // behind the UI," never a solid black box.
+          gl.setClearColor(0x000000, 0);
+        }}
       >
         <Scene />
       </Canvas>
