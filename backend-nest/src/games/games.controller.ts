@@ -10,8 +10,12 @@ export class GamesController {
   // declaration order, so this must come first or 'today' gets swallowed
   // by the ':id' param route.
   @Get('today')
-  async today(@Query('sport') sport: string = 'football', @LangParam() lang: Lang) {
-    return this.games.gamesToday(sport as 'football' | 'basketball', lang);
+  async today(
+    @Query('sport') sport: string = 'football',
+    @Query('competition') competition: string | undefined,
+    @LangParam() lang: Lang,
+  ) {
+    return this.games.gamesToday(sport as 'football' | 'basketball', lang, competition);
   }
 
   @Get(':id')

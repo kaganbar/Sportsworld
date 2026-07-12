@@ -1,24 +1,37 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { Mesh } from "three";
 import Player from "./Player";
 import Crowd from "./Crowd";
 import { Stand, FloodlightPole } from "./Stadium";
+import { orbitPosition, lerp3 } from "./orbitMath";
 
 const HOME_COLOR = "#ea580c";
 const AWAY_COLOR = "#1d4ed8";
 const GLOW = "#fff2e0";
 
+const PLAYERS = [
+  { radius: 2.2, speed: 0.5, offset: 0, color: HOME_COLOR },
+  { radius: 1.6, speed: 0.65, offset: 2.5, color: AWAY_COLOR },
+];
+const HOOP_Y = 2.1;
+const HOOP_Z = -3;
+const PASS_DURATION = 1.8;
+const SHOT_DURATION = 1.0;
+const CYCLE = PASS_DURATION + SHOT_DURATION;
+const PASS_ARC = 0.5;
+const SHOT_ARC = 2.2;
+
 function Hoop({ x }: { x: number }) {
   return (
-    <group position={[x, 0, -3]}>
+    <group position={[x, 0, HOOP_Z]}>
       <mesh position={[0, 2.6, 0]}>
         <boxGeometry args={[1.2, 1, 0.05]} />
         <meshStandardMaterial color="#e5e7eb" />
       </mesh>
-      <mesh position={[0, 2.1, 0.35]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[0, HOOP_Y, 0.35]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.3, 0.03, 8, 24]} />
         <meshStandardMaterial color="#f97316" />
       </mesh>
@@ -40,16 +53,55 @@ function CameraDrift() {
   return null;
 }
 
-export default function BasketballScene() {
-  const ballRef = useRef<Mesh>(null);
+// Ball alternates a pass between the two orbiting players, then arcs toward
+// whichever hoop is nearest the receiving player (a "shot"), triggering
+// that player's "shoot" clip at release — replacing the old fully
+// independent sine/cosine bounce path.
+function Ball({ onShooter }: { onShooter: (i: number | null) => void }) {
+  const ref = useRef<Mesh>(null);
+  const lastPhase = useRef(-1);
 
   useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    if (!ballRef.current) return;
-    ballRef.current.position.x = Math.sin(t * 0.4) * 4;
-    ballRef.current.position.z = Math.cos(t * 0.25) * 2;
-    ballRef.current.position.y = 0.4 + Math.abs(Math.sin(t * 3)) * 0.6; // bounce
+    const elapsed = clock.getElapsedTime();
+    const cycleStart = Math.floor(elapsed / CYCLE) * CYCLE;
+    const local = elapsed - cycleStart;
+
+    if (local < PASS_DURATION) {
+      if (lastPhase.current !== 0) {
+        lastPhase.current = 0;
+        onShooter(null);
+      }
+      const progress = local / PASS_DURATION;
+      const from = orbitPosition(cycleStart, PLAYERS[0].radius, PLAYERS[0].speed, PLAYERS[0].offset, 0.5);
+      const to = orbitPosition(cycleStart + PASS_DURATION, PLAYERS[1].radius, PLAYERS[1].speed, PLAYERS[1].offset, 0.5);
+      const [x, , z] = lerp3(from, to, progress);
+      ref.current?.position.set(x, 0.4 + Math.sin(progress * Math.PI) * PASS_ARC, z);
+      return;
+    }
+
+    if (lastPhase.current !== 1) {
+      lastPhase.current = 1;
+      onShooter(1);
+    }
+    const shotStart = cycleStart + PASS_DURATION;
+    const progress = (local - PASS_DURATION) / SHOT_DURATION;
+    const from = orbitPosition(shotStart, PLAYERS[1].radius, PLAYERS[1].speed, PLAYERS[1].offset, 0.5);
+    const hoopX = from[0] >= 0 ? 5.5 : -5.5;
+    const to: [number, number, number] = [hoopX, HOOP_Y, HOOP_Z];
+    const [x, , z] = lerp3(from, to, progress);
+    ref.current?.position.set(x, from[1] + 0.4 + Math.sin(progress * Math.PI) * SHOT_ARC, z);
   });
+
+  return (
+    <mesh ref={ref}>
+      <sphereGeometry args={[0.3, 16, 16]} />
+      <meshStandardMaterial color="#ea580c" />
+    </mesh>
+  );
+}
+
+export default function BasketballScene() {
+  const [shooterIndex, setShooterIndex] = useState<number | null>(null);
 
   return (
     <>
@@ -77,23 +129,18 @@ export default function BasketballScene() {
       <FloodlightPole position={[-7.8, 0, 4.3]} glowColor={GLOW} />
       <FloodlightPole position={[7.8, 0, 4.3]} glowColor={GLOW} />
 
-      <Player
-        color={HOME_COLOR}
-        animation="run"
-        scale={0.5}
-        orbit={{ radius: 2.2, speed: 0.5, offset: 0, y: 0, zScale: 0.5 }}
-      />
-      <Player
-        color={AWAY_COLOR}
-        animation="run"
-        scale={0.5}
-        orbit={{ radius: 1.6, speed: 0.65, offset: 2.5, y: 0, zScale: 0.5 }}
-      />
+      {PLAYERS.map((p, i) => (
+        <Player
+          key={i}
+          color={p.color}
+          animation={shooterIndex === i ? "shoot" : "run"}
+          scale={0.5}
+          orbit={{ radius: p.radius, speed: p.speed, offset: p.offset, y: 0, zScale: 0.5 }}
+        />
+      ))}
       <Player color={HOME_COLOR} animation="idle" scale={0.5} position={[4.6, 0, -2.6]} rotationY={Math.PI} />
-      <mesh ref={ballRef}>
-        <sphereGeometry args={[0.3, 16, 16]} />
-        <meshStandardMaterial color="#ea580c" />
-      </mesh>
+
+      <Ball onShooter={setShooterIndex} />
     </>
   );
 }

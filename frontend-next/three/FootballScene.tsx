@@ -1,21 +1,30 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import OrbitingSphere from "./OrbitingSphere";
+import type { Mesh } from "three";
 import Player from "./Player";
 import Crowd from "./Crowd";
 import { Stand, FloodlightPole } from "./Stadium";
+import { orbitPosition, lerp3 } from "./orbitMath";
 
 const HOME_COLOR = "#f3f6f3";
 const AWAY_COLOR = "#1e3a8a";
 const GLOW = "#fff8e1";
 
-const PLAYERS = [
+// The three outfield passers the ball cycles between (round-robin) — a
+// 4th former "orbiting player" is now the goalkeeper below instead.
+const PASSERS = [
   { radius: 3, speed: 0.4, offset: 0, color: HOME_COLOR },
   { radius: 2.2, speed: 0.55, offset: 2, color: AWAY_COLOR },
   { radius: 3.5, speed: 0.3, offset: 4, color: HOME_COLOR },
-  { radius: 2.6, speed: 0.5, offset: 1.2, color: AWAY_COLOR },
 ];
+const SEGMENT_DURATION = 2.2; // seconds per pass between two players
+const ARC_HEIGHT = 0.7;
+
+const GOALKEEPER_BASE: [number, number, number] = [0, 0, -6.3];
+const DIVE_CYCLE = 5; // seconds between dives
+const DIVE_DURATION = 0.8;
 
 function Goal({ z }: { z: number }) {
   const facing = z < 0 ? 1 : -1; // crossbar sits on the pitch-facing side
@@ -51,7 +60,68 @@ function CameraDrift() {
   return null;
 }
 
+// Drives the ball along an explicit waypoint path between the two passers
+// currently exchanging it (rather than an independent ellipse), and flags
+// which passer should play "kick" at the moment the ball departs them.
+function Ball({ onKicker }: { onKicker: (i: number) => void }) {
+  const ref = useRef<Mesh>(null);
+  const lastSegment = useRef(-1);
+
+  useFrame(({ clock }) => {
+    const elapsed = clock.getElapsedTime();
+    const segment = Math.floor(elapsed / SEGMENT_DURATION);
+    const from = segment % PASSERS.length;
+    const to = (segment + 1) % PASSERS.length;
+    if (segment !== lastSegment.current) {
+      lastSegment.current = segment;
+      onKicker(from);
+    }
+
+    const segStart = segment * SEGMENT_DURATION;
+    const segEnd = segStart + SEGMENT_DURATION;
+    const progress = (elapsed - segStart) / SEGMENT_DURATION;
+
+    const fromPos = orbitPosition(segStart, PASSERS[from].radius, PASSERS[from].speed, PASSERS[from].offset);
+    const toPos = orbitPosition(segEnd, PASSERS[to].radius, PASSERS[to].speed, PASSERS[to].offset);
+    const [x, , z] = lerp3(fromPos, toPos, progress);
+    const arc = Math.sin(progress * Math.PI) * ARC_HEIGHT;
+
+    ref.current?.position.set(x, 0.2 + arc, z);
+  });
+
+  return (
+    <mesh ref={ref}>
+      <sphereGeometry args={[0.18, 16, 16]} />
+      <meshStandardMaterial color="#ffffff" />
+    </mesh>
+  );
+}
+
+function Goalkeeper() {
+  const [diving, setDiving] = useState(false);
+  const lastPhase = useRef(false);
+
+  useFrame(({ clock }) => {
+    const phase = (clock.getElapsedTime() % DIVE_CYCLE) < DIVE_DURATION;
+    if (phase !== lastPhase.current) {
+      lastPhase.current = phase;
+      setDiving(phase);
+    }
+  });
+
+  return (
+    <Player
+      color={AWAY_COLOR}
+      animation={diving ? "dive" : "idle"}
+      scale={0.55}
+      sway={{ base: GOALKEEPER_BASE, axis: "x", amplitude: 1.0, speed: 0.5, offset: 0, facingY: 0 }}
+    />
+  );
+}
+
 export default function FootballScene() {
+  const [kickerIndex, setKickerIndex] = useState(0);
+
   return (
     <>
       <CameraDrift />
@@ -85,17 +155,18 @@ export default function FootballScene() {
       <FloodlightPole position={[-10.5, 0, 6.5]} glowColor={GLOW} />
       <FloodlightPole position={[10.5, 0, 6.5]} glowColor={GLOW} />
 
-      {PLAYERS.map((p, i) => (
+      {PASSERS.map((p, i) => (
         <Player
           key={i}
           color={p.color}
-          animation="run"
+          animation={kickerIndex === i ? "kick" : "run"}
           scale={0.55}
           orbit={{ radius: p.radius, speed: p.speed, offset: p.offset, y: 0, zScale: 0.55 }}
         />
       ))}
-      {/* the ball — smaller, faster, different phase so it weaves between players */}
-      <OrbitingSphere radius={1.4} speed={0.9} offset={0.5} color="#ffffff" size={0.18} y={0.2} />
+      <Goalkeeper />
+
+      <Ball onKicker={setKickerIndex} />
     </>
   );
 }

@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StatsService } from '../stats/stats.service';
 import { TranslationsService } from '../translations/translations.service';
 import { RedisService } from '../redis/redis.service';
+import { CompetitionsService } from '../competitions/competitions.service';
 import { Lang } from '../common/lang.decorator';
 
 // Same read-through cache role/rationale as GamesService.gamesToday — see
@@ -16,6 +17,7 @@ export class TennisService {
     private readonly stats: StatsService,
     private readonly translations: TranslationsService,
     private readonly redis: RedisService,
+    private readonly competitions: CompetitionsService,
   ) {}
 
   private async playerDto(p: { id: number; name: string; country: string; tour: string; ranking: number | null }, lang: Lang) {
@@ -59,8 +61,8 @@ export class TennisService {
     };
   }
 
-  async matchesToday(lang: Lang) {
-    const cacheKey = `tennis:matches:today:${lang}`;
+  async matchesToday(lang: Lang, competition?: string) {
+    const cacheKey = `tennis:matches:today:${competition ?? 'all'}:${lang}`;
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
@@ -69,8 +71,15 @@ export class TennisService {
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
 
+    let competitionId: number | undefined;
+    if (competition) {
+      const row = await this.competitions.findBySlug('tennis', competition);
+      if (!row) return []; // unknown slug — degrade to empty, never error
+      competitionId = row.id;
+    }
+
     const matches = await this.prisma.tennisMatch.findMany({
-      where: { startTime: { gte: start, lt: end } },
+      where: { startTime: { gte: start, lt: end }, ...(competitionId ? { competitionId } : {}) },
       include: { player1: true, player2: true },
       orderBy: { startTime: 'asc' },
     });

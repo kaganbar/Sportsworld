@@ -65,3 +65,21 @@ export const otherSportsTheme = {
 } as const;
 
 export type OtherSportKey = keyof typeof otherSportsTheme;
+
+// Optional per-competition accent override (keyed by the Competition slug
+// from the backend, flat across all sports since slugs already read
+// unambiguously — "champions-league" only exists under football). Additive,
+// not a restructure: ThemeLayout falls back to the sport's own accent when
+// a slug has no entry here. Deliberately a color-only override, not a new
+// 3D scene — marquee competitions get a distinct brand feel without a new
+// asset/scene per competition.
+export const competitionAccents: Partial<Record<string, string>> = {
+  "champions-league": "#0c2d6b",
+  "premier-league": "#3d1560",
+  "la-liga": "#ee3524",
+  "world-cup": "#ffcc00",
+  nba: "#c8102e",
+  wimbledon: "#520c3c",
+  "atp-tour": "#004b8d",
+  "wta-tour": "#7209b7",
+};

@@ -2,6 +2,10 @@ import type { Lang } from "./i18n";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
+export type SportKey = "football" | "basketball" | "tennis";
+
+const competitionQuery = (competition?: string) => (competition ? `&competition=${competition}` : "");
+
 export interface Team {
   id: number;
   name: string;
@@ -90,8 +94,8 @@ export class ApiError extends Error {
   }
 }
 
-export const fetchTodaysGames = (lang: Lang = "en") =>
-  get<Game[]>(`/api/games/today/?sport=football&lang=${lang}`);
+export const fetchTodaysGames = (lang: Lang = "en", competition?: string) =>
+  get<Game[]>(`/api/games/today/?sport=football&lang=${lang}${competitionQuery(competition)}`);
 export const fetchGameDetail = (id: string, lang: Lang = "en") =>
   get<GameDetail>(`/api/games/${id}/?lang=${lang}`);
 export const fetchAnalysis = (id: string, lang: "en" | "he" = "en") =>
@@ -124,8 +128,8 @@ export interface BasketballAnalysis {
   created_at: string;
 }
 
-export const fetchBasketballGames = (lang: Lang = "en") =>
-  get<Game[]>(`/api/games/today/?sport=basketball&lang=${lang}`);
+export const fetchBasketballGames = (lang: Lang = "en", competition?: string) =>
+  get<Game[]>(`/api/games/today/?sport=basketball&lang=${lang}${competitionQuery(competition)}`);
 export const fetchBasketballGameDetail = (id: string, lang: Lang = "en") =>
   get<BasketballGameDetail>(`/api/basketball/games/${id}/?lang=${lang}`);
 export const fetchBasketballAnalysis = (id: string, lang: "en" | "he" = "en") =>
@@ -193,8 +197,8 @@ export interface TennisAnalysis {
   created_at: string;
 }
 
-export const fetchTennisMatches = (lang: Lang = "en") =>
-  get<TennisMatch[]>(`/api/tennis/matches/today/?lang=${lang}`);
+export const fetchTennisMatches = (lang: Lang = "en", competition?: string) =>
+  get<TennisMatch[]>(`/api/tennis/matches/today/?lang=${lang}${competitionQuery(competition)}`);
 export const fetchTennisMatchDetail = (id: string, lang: Lang = "en") =>
   get<TennisMatchDetail>(`/api/tennis/matches/${id}/?lang=${lang}`);
 export const fetchTennisAnalysis = (id: string, lang: "en" | "he" = "en") =>
@@ -211,7 +215,8 @@ export interface NewsArticle {
   source: string;
 }
 
-export const fetchNews = (limit = 30) => get<NewsArticle[]>(`/api/news?limit=${limit}`);
+export const fetchNews = (limit = 30, sport?: SportKey, competition?: string) =>
+  get<NewsArticle[]>(`/api/news?limit=${limit}${sport ? `&sport=${sport}` : ""}${competitionQuery(competition)}`);
 
 // --- Transfers (Phase 6 — raw ingested rumors, no story-grouping/dedup or our own probability estimate yet) ---
 
@@ -228,4 +233,42 @@ export interface TransferRumour {
   reported_at: string;
 }
 
-export const fetchTransfers = (limit = 30) => get<TransferRumour[]>(`/api/transfers?limit=${limit}`);
+export const fetchTransfers = (limit = 30, sport?: SportKey, competition?: string) =>
+  get<TransferRumour[]>(`/api/transfers?limit=${limit}${sport ? `&sport=${sport}` : ""}${competitionQuery(competition)}`);
+
+// --- Competitions / Standings / Rankings ---
+
+export interface Competition {
+  slug: string;
+  name: string;
+}
+
+export const fetchCompetitions = (sport: SportKey, lang: Lang = "en") =>
+  get<Competition[]>(`/api/competitions?sport=${sport}&lang=${lang}`);
+
+export interface StandingsRow {
+  team_id: number;
+  team_name: string;
+  short_name: string;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_for: number;
+  goals_against: number;
+  goal_diff: number;
+  points: number;
+}
+
+export const fetchStandings = (sport: "football" | "basketball", competition: string, lang: Lang = "en") =>
+  get<StandingsRow[]>(`/api/standings?sport=${sport}&competition=${competition}&lang=${lang}`);
+
+export interface RankingEntry {
+  id: number;
+  name: string;
+  country: string;
+  ranking: number | null;
+}
+
+export const fetchRankings = (tour: "atp" | "wta", lang: Lang = "en") =>
+  get<RankingEntry[]>(`/api/rankings?tour=${tour}&lang=${lang}`);

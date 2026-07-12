@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { TennisService } from './tennis.service';
 import { LangParam, Lang } from '../common/lang.decorator';
 
@@ -7,8 +7,8 @@ export class TennisController {
   constructor(private readonly tennis: TennisService) {}
 
   @Get('matches/today')
-  async today(@LangParam() lang: Lang) {
-    return this.tennis.matchesToday(lang);
+  async today(@Query('competition') competition: string | undefined, @LangParam() lang: Lang) {
+    return this.tennis.matchesToday(lang, competition);
   }
 
   @Get('matches/:id')

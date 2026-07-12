@@ -43,21 +43,66 @@ enum TransferStatus {
 }
 
 model Team {
-  id           Int      @id @default(autoincrement())
-  sport        Sport    @default(football)
-  name         String   @unique
+  id           Int    @id @default(autoincrement())
+  sport        Sport  @default(football)
+  name         String @unique
   shortName    String
   country      String
-  primaryColor String   @default("#1E7B34")
+  primaryColor String @default("#1E7B34")
 
-  players       Player[]
-  homeGames     Game[]        @relation("HomeTeam")
-  awayGames     Game[]        @relation("AwayTeam")
-  homeResults   MatchResult[] @relation("HomeResultTeam")
-  awayResults   MatchResult[] @relation("AwayResultTeam")
-  injuries      Injury[]
-  lineups       Lineup[]
+  players            Player[]
+  homeGames          Game[]               @relation("HomeTeam")
+  awayGames          Game[]               @relation("AwayTeam")
+  homeResults        MatchResult[]        @relation("HomeResultTeam")
+  awayResults        MatchResult[]        @relation("AwayResultTeam")
+  injuries           Injury[]
+  lineups            Lineup[]
   statisticsAnalyses StatisticsAnalysis[]
+  teamCompetitions   TeamCompetition[]
+}
+
+// Canonical competition/league (Premier League, NBA, ATP Tour, ...),
+// seeded per sport rather than derived — the scraper's own
+// `competitionDisplayName` strings are free text with no guaranteed
+// taxonomy (e.g. "Champions League" vs "UEFA Champions League"), so a
+// real filterable nav needs a stable slug to route/cache on. `aliases`
+// is the raw-string match list (exact match, extended over time);
+// `slug: "other"` is a reserved per-sport bucket for anything unmatched
+// so scraped data is never silently hidden. `sportKey` is a plain string
+// (not the `Sport` enum) since tennis has no `Sport` member.
+model Competition {
+  id       Int      @id @default(autoincrement())
+  sportKey String
+  // Unique per sport, not globally — "world-cup" is a valid slug for both
+  // football and basketball, disambiguated by the sport param on every
+  // route/endpoint that consumes it.
+  slug     String
+  name     String
+  nameHe   String
+  tier     Int      @default(99)
+  aliases  String[]
+
+  games             Game[]
+  matchResults      MatchResult[]
+  tennisMatches     TennisMatch[]
+  teamCompetitions  TeamCompetition[]
+  newsStoryClusters NewsStoryCluster[]
+  transferStories   TransferStory[]
+
+  @@unique([sportKey, slug])
+}
+
+// Derived, not user-facing: a team's competition membership is observed
+// from the games it actually plays (populated in normalize.service.ts as
+// games are ingested), not configured by hand.
+model TeamCompetition {
+  id            Int         @id @default(autoincrement())
+  team          Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId        Int
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  competitionId Int
+
+  @@unique([teamId, competitionId])
 }
 
 model Player {
@@ -75,19 +120,25 @@ model Player {
 }
 
 model Game {
-  id          Int        @id @default(autoincrement())
-  sport       Sport      @default(football)
-  competition String
-  kickoff     DateTime
-  venue       String
-  status      GameStatus @default(scheduled)
-  homeTeam    Team       @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
-  homeTeamId  Int
-  awayTeam    Team       @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
-  awayTeamId  Int
-  homeScore   Int?
-  awayScore   Int?
-  minute      Int? // football's live clock only
+  id             Int          @id @default(autoincrement())
+  sport          Sport        @default(football)
+  competition    String
+  kickoff        DateTime
+  venue          String
+  status         GameStatus   @default(scheduled)
+  homeTeam       Team         @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  homeTeamId     Int
+  awayTeam       Team         @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  awayTeamId     Int
+  homeScore      Int?
+  awayScore      Int?
+  minute         Int? // football's live clock only
+  // Resolved from the raw `competition` string at ingest time (see
+  // CompetitionsService.resolveCompetition) — nullable so pre-migration
+  // rows and not-yet-backfilled data still work; the raw string column
+  // above stays the source of truth for display and the natural key.
+  competitionRef Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+  competitionId  Int?
 
   lineups       Lineup[]
   quarterScores QuarterScore[]
@@ -96,6 +147,7 @@ model Game {
 
   // Doubles as the scraper's natural key for upserts.
   @@unique([sport, competition, kickoff, homeTeamId, awayTeamId])
+  @@index([competitionId])
 }
 
 model Lineup {
@@ -115,34 +167,37 @@ model Lineup {
 // A finished historical game — recent-form/H2H are derived by querying this
 // (plus finished Games), not a stored join table. Mirrors games.MatchResult.
 model MatchResult {
-  id          Int      @id @default(autoincrement())
-  date        DateTime @db.Date
-  competition String
-  homeTeam    Team     @relation("HomeResultTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
-  homeTeamId  Int
-  awayTeam    Team     @relation("AwayResultTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
-  awayTeamId  Int
-  homeScore   Int
-  awayScore   Int
+  id             Int          @id @default(autoincrement())
+  date           DateTime     @db.Date
+  competition    String
+  homeTeam       Team         @relation("HomeResultTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  homeTeamId     Int
+  awayTeam       Team         @relation("AwayResultTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  awayTeamId     Int
+  homeScore      Int
+  awayScore      Int
+  competitionRef Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+  competitionId  Int?
 
   @@index([homeTeamId])
   @@index([awayTeamId])
+  @@index([competitionId])
 }
 
 model Injury {
-  id     Int          @id @default(autoincrement())
-  player Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  id       Int          @id @default(autoincrement())
+  player   Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
   playerId Int
-  team   Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId Int
-  status InjuryStatus
-  reason String
+  team     Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId   Int
+  status   InjuryStatus
+  reason   String
 }
 
 // Basketball-only per-quarter score breakdown — the one genuinely
 // sport-specific model, everything else above is shared with football.
 model QuarterScore {
-  id        Int @id @default(autoincrement())
+  id        Int  @id @default(autoincrement())
   game      Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
   gameId    Int
   quarter   Int
@@ -159,32 +214,35 @@ model TennisPlayer {
   tour    Tour
   ranking Int?
 
-  matchesAsP1 TennisMatch[] @relation("P1")
-  matchesAsP2 TennisMatch[] @relation("P2")
-  wonMatches  TennisMatch[] @relation("Winner")
+  matchesAsP1        TennisMatch[]        @relation("P1")
+  matchesAsP2        TennisMatch[]        @relation("P2")
+  wonMatches         TennisMatch[]        @relation("Winner")
   statisticsAnalyses StatisticsAnalysis[]
 }
 
 model TennisMatch {
-  id         Int           @id @default(autoincrement())
-  tour       Tour
-  tournament String
-  round      String
-  venue      String
-  startTime  DateTime
-  status     GameStatus    @default(scheduled)
-  player1    TennisPlayer  @relation("P1", fields: [player1Id], references: [id], onDelete: Cascade)
-  player1Id  Int
-  player2    TennisPlayer  @relation("P2", fields: [player2Id], references: [id], onDelete: Cascade)
-  player2Id  Int
-  winner     TennisPlayer? @relation("Winner", fields: [winnerId], references: [id], onDelete: SetNull)
-  winnerId   Int?
+  id             Int           @id @default(autoincrement())
+  tour           Tour
+  tournament     String
+  round          String
+  venue          String
+  startTime      DateTime
+  status         GameStatus    @default(scheduled)
+  player1        TennisPlayer  @relation("P1", fields: [player1Id], references: [id], onDelete: Cascade)
+  player1Id      Int
+  player2        TennisPlayer  @relation("P2", fields: [player2Id], references: [id], onDelete: Cascade)
+  player2Id      Int
+  winner         TennisPlayer? @relation("Winner", fields: [winnerId], references: [id], onDelete: SetNull)
+  winnerId       Int?
+  competitionRef Competition?  @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+  competitionId  Int?
 
   sets        TennisSet[]
   analyses    MatchAnalysis[]
   predictions PredictionAnalysis[]
 
   @@unique([tour, tournament, round, startTime, player1Id, player2Id])
+  @@index([competitionId])
 }
 
 model TennisSet {
@@ -249,7 +307,13 @@ model TransferStory {
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
-  reports TransferReport[]
+  reports      TransferReport[]
+  // Best-effort tagging: fromClub/toClub matched against Team.name,
+  // resolved to competitions via TeamCompetition (see
+  // TransferAgentService.groupUngroupedReports). Deliberately
+  // many-to-many, not a single competitionId — a transfer can be
+  // relevant to more than one competition (a team's league + cup).
+  competitions Competition[]
 
   @@index([playerName])
 }
@@ -259,24 +323,24 @@ model TransferStory {
 // rumor. storyId is nullable so a freshly-scraped report can exist before
 // it's been matched to (or started) a story.
 model TransferReport {
-  id                 Int            @id @default(autoincrement())
-  story              TransferStory? @relation(fields: [storyId], references: [id], onDelete: SetNull)
-  storyId            Int?
-  source             ContentSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  sourceId           Int
-  playerName         String
-  fromClub           String?
-  toClub             String
-  status             TransferStatus @default(rumor)
-  description        String
-  sourceUrl          String         @unique
+  id                Int            @id @default(autoincrement())
+  story             TransferStory? @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  storyId           Int?
+  source            ContentSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceId          Int
+  playerName        String
+  fromClub          String?
+  toClub            String
+  status            TransferStatus @default(rumor)
+  description       String
+  sourceUrl         String         @unique
   // A source's own published probability for this rumor (e.g. Transfermarkt's
   // "user assessment" %), distinct from TransferStory.estimatedProbability
   // which is our own agent's estimate (Phase 8) — kept separate so a real
   // data point isn't conflated with something we haven't computed yet.
-  sourceProbability  Int?
-  reportedAt         DateTime
-  createdAt          DateTime       @default(now())
+  sourceProbability Int?
+  reportedAt        DateTime
+  createdAt         DateTime       @default(now())
 
   @@index([storyId])
 }
@@ -293,7 +357,11 @@ model NewsStoryCluster {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  articles NewsArticle[]
+  articles     NewsArticle[]
+  // Best-effort tagging: headline/summary text matched against
+  // Team.name/shortName, resolved to competitions via TeamCompetition
+  // (see NewsAgentService.clusterUnclusteredArticles).
+  competitions Competition[]
 }
 
 model NewsArticle {
@@ -325,23 +393,23 @@ model NameTranslation {
 // single table with nullable FKs/fields avoids triplicating cache logic.
 // Exactly one of gameId/tennisMatchId is populated per row.
 model MatchAnalysis {
-  id             Int          @id @default(autoincrement())
-  sport          String // "football" | "basketball" | "tennis"
-  game           Game?        @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameId         Int?
-  tennisMatch    TennisMatch? @relation(fields: [tennisMatchId], references: [id], onDelete: Cascade)
-  tennisMatchId  Int?
-  language       String       @default("en")
-  summary        String
-  keyFactors     String[]
-  homeWinPct     Int? // football + basketball
-  drawPct        Int? // football only
-  awayWinPct     Int? // football + basketball
-  player1WinPct  Int? // tennis only
-  player2WinPct  Int? // tennis only
-  confidence     Confidence
-  model          String
-  createdAt      DateTime     @default(now())
+  id            Int          @id @default(autoincrement())
+  sport         String // "football" | "basketball" | "tennis"
+  game          Game?        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId        Int?
+  tennisMatch   TennisMatch? @relation(fields: [tennisMatchId], references: [id], onDelete: Cascade)
+  tennisMatchId Int?
+  language      String       @default("en")
+  summary       String
+  keyFactors    String[]
+  homeWinPct    Int? // football + basketball
+  drawPct       Int? // football only
+  awayWinPct    Int? // football + basketball
+  player1WinPct Int? // tennis only
+  player2WinPct Int? // tennis only
+  confidence    Confidence
+  model         String
+  createdAt     DateTime     @default(now())
 
   @@unique([gameId, language])
   @@unique([tennisMatchId, language])
@@ -353,18 +421,18 @@ model MatchAnalysis {
 // row). Deliberately no probability fields here — that's Prediction
 // Agent's job; this table is form/H2H commentary only.
 model StatisticsAnalysis {
-  id             Int      @id @default(autoincrement())
+  id             Int           @id @default(autoincrement())
   sport          String // "football" | "basketball" | "tennis"
-  team           Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team           Team?         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId         Int?
   tennisPlayer   TennisPlayer? @relation(fields: [tennisPlayerId], references: [id], onDelete: Cascade)
   tennisPlayerId Int?
-  language       String   @default("en")
+  language       String        @default("en")
   summary        String
   keyPoints      String[]
   confidence     Confidence
   model          String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime      @default(now())
 
   @@unique([teamId, language])
   @@unique([tennisPlayerId, language])

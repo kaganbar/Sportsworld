@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StatsService } from '../stats/stats.service';
 import { TranslationsService } from '../translations/translations.service';
 import { RedisService } from '../redis/redis.service';
+import { CompetitionsService } from '../competitions/competitions.service';
 import { Lang } from '../common/lang.decorator';
 
 // Response shapes use snake_case keys deliberately — the frontend's
@@ -24,6 +25,7 @@ export class GamesService {
     private readonly stats: StatsService,
     private readonly translations: TranslationsService,
     private readonly redis: RedisService,
+    private readonly competitions: CompetitionsService,
   ) {}
 
   async teamDto(team: { id: number; name: string; shortName: string; country: string; primaryColor: string }, lang: Lang) {
@@ -57,8 +59,8 @@ export class GamesService {
     };
   }
 
-  async gamesToday(sport: 'football' | 'basketball', lang: Lang) {
-    const cacheKey = `games:today:${sport}:${lang}`;
+  async gamesToday(sport: 'football' | 'basketball', lang: Lang, competition?: string) {
+    const cacheKey = `games:today:${sport}:${competition ?? 'all'}:${lang}`;
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
@@ -67,8 +69,15 @@ export class GamesService {
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
 
+    let competitionId: number | undefined;
+    if (competition) {
+      const row = await this.competitions.findBySlug(sport, competition);
+      if (!row) return []; // unknown slug — degrade to empty, never error
+      competitionId = row.id;
+    }
+
     const games = await this.prisma.game.findMany({
-      where: { sport, kickoff: { gte: start, lt: end } },
+      where: { sport, kickoff: { gte: start, lt: end }, ...(competitionId ? { competitionId } : {}) },
       include: { homeTeam: true, awayTeam: true },
       orderBy: { kickoff: 'asc' },
     });

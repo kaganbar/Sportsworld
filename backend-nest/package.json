@@ -7,6 +7,8 @@
     "start": "nest start",
     "dev": "nest start --watch",
     "seed": "ts-node prisma/seed.ts",
+    "seed:competitions": "ts-node prisma/seed-competitions.ts",
+    "backfill:competitions": "ts-node prisma/backfill-competitions.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },

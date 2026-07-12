@@ -24,6 +24,8 @@ import { ScraperModule } from './scraper/scraper.module';
 import { AuthModule } from './auth/auth.module';
 import { NewsModule } from './news/news.module';
 import { TransfersModule } from './transfers/transfers.module';
+import { CompetitionsModule } from './competitions/competitions.module';
+import { StandingsModule } from './standings/standings.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { TransfersModule } from './transfers/transfers.module';
     RedisModule,
     TranslationsModule,
     StatsModule,
+    CompetitionsModule,
+    StandingsModule,
     GamesModule,
     BasketballModule,
     TennisModule,

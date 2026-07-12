@@ -1,12 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CompetitionsService, SportKey } from '../competitions/competitions.service';
 
 @Injectable()
 export class TransfersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly competitions: CompetitionsService,
+  ) {}
 
-  async recentRumours(limit = 30) {
+  /** Same best-effort filtering pattern as NewsService.recentArticles —
+   * filters to reports whose grouped story has been tagged with that
+   * competition (see TransferAgentService.tagStoryCompetitions). */
+  async recentRumours(limit = 30, sportKey?: SportKey, competitionSlug?: string) {
+    let competitionId: number | undefined;
+    if (sportKey && competitionSlug) {
+      const row = await this.competitions.findBySlug(sportKey, competitionSlug);
+      if (!row) return [];
+      competitionId = row.id;
+    }
+
     const reports = await this.prisma.transferReport.findMany({
+      where: competitionId ? { story: { competitions: { some: { id: competitionId } } } } : {},
       include: { source: true },
       orderBy: { reportedAt: 'desc' },
       take: limit,

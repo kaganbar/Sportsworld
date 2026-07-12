@@ -1,17 +1,25 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { Mesh } from "three";
 import Player from "./Player";
 import Crowd from "./Crowd";
 import { Stand, FloodlightPole } from "./Stadium";
+import { swayPosition, lerp3 } from "./orbitMath";
 
 const PLAYER_1_COLOR = "#ffffff";
 const PLAYER_2_COLOR = "#1e40af";
 const COURT_HALF_LENGTH = 7;
 const COURT_HALF_WIDTH = 3.5;
 const GLOW = "#eef3ff";
+
+const PLAYERS = [
+  { base: [0, 0, -COURT_HALF_LENGTH + 1.2] as [number, number, number], axis: "x" as const, amplitude: 1.6, speed: 0.5, offset: 0 },
+  { base: [0, 0, COURT_HALF_LENGTH - 1.2] as [number, number, number], axis: "x" as const, amplitude: 1.6, speed: 0.5, offset: Math.PI },
+];
+const RALLY_SEGMENT = 1.5; // seconds per shot exchange
+const RALLY_ARC = 1.3;
 
 // Subtle camera drift — a background element, not the focus, so the
 // amplitude stays small. Replaces the fully static camera from
@@ -27,17 +35,45 @@ function CameraDrift() {
   return null;
 }
 
-export default function TennisScene() {
-  const ballRef = useRef<Mesh>(null);
+// Ball alternates toward each player's current sway position (a rally)
+// instead of an independent sine wave, triggering "swing" on whichever
+// player is about to hit it back at the start of each exchange.
+function Ball({ onSwinger }: { onSwinger: (i: number) => void }) {
+  const ref = useRef<Mesh>(null);
+  const lastSegment = useRef(-1);
 
   useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    if (!ballRef.current) return;
-    // volleys back and forth over the net, roughly following each rally swing
-    ballRef.current.position.z = Math.sin(t * 0.5) * COURT_HALF_LENGTH * 0.8;
-    ballRef.current.position.x = Math.sin(t * 0.5 + Math.PI / 2) * 1.5;
-    ballRef.current.position.y = 0.5 + Math.abs(Math.sin(t * 1.0)) * 1.4;
+    const elapsed = clock.getElapsedTime();
+    const segment = Math.floor(elapsed / RALLY_SEGMENT);
+    const from = segment % 2;
+    const to = (segment + 1) % 2;
+    if (segment !== lastSegment.current) {
+      lastSegment.current = segment;
+      onSwinger(from);
+    }
+
+    const segStart = segment * RALLY_SEGMENT;
+    const segEnd = segStart + RALLY_SEGMENT;
+    const progress = (elapsed - segStart) / RALLY_SEGMENT;
+
+    const p1 = PLAYERS[from];
+    const p2 = PLAYERS[to];
+    const fromPos = swayPosition(segStart, p1.base, p1.axis, p1.amplitude, p1.speed, p1.offset);
+    const toPos = swayPosition(segEnd, p2.base, p2.axis, p2.amplitude, p2.speed, p2.offset);
+    const [x, , z] = lerp3(fromPos, toPos, progress);
+    ref.current?.position.set(x, 0.3 + Math.sin(progress * Math.PI) * RALLY_ARC, z);
   });
+
+  return (
+    <mesh ref={ref}>
+      <sphereGeometry args={[0.15, 12, 12]} />
+      <meshStandardMaterial color="#d4f04c" />
+    </mesh>
+  );
+}
+
+export default function TennisScene() {
+  const [swingerIndex, setSwingerIndex] = useState<number | null>(null);
 
   return (
     <>
@@ -102,28 +138,18 @@ export default function TennisScene() {
 
       <Player
         color={PLAYER_1_COLOR}
-        animation="run"
+        animation={swingerIndex === 0 ? "swing" : "run"}
         scale={0.55}
-        sway={{ base: [0, 0, -COURT_HALF_LENGTH + 1.2], axis: "x", amplitude: 1.6, speed: 0.5, offset: 0, facingY: 0 }}
+        sway={{ ...PLAYERS[0], facingY: 0 }}
       />
       <Player
         color={PLAYER_2_COLOR}
-        animation="run"
+        animation={swingerIndex === 1 ? "swing" : "run"}
         scale={0.55}
-        sway={{
-          base: [0, 0, COURT_HALF_LENGTH - 1.2],
-          axis: "x",
-          amplitude: 1.6,
-          speed: 0.5,
-          offset: Math.PI,
-          facingY: Math.PI,
-        }}
+        sway={{ ...PLAYERS[1], facingY: Math.PI }}
       />
 
-      <mesh ref={ballRef}>
-        <sphereGeometry args={[0.15, 12, 12]} />
-        <meshStandardMaterial color="#d4f04c" />
-      </mesh>
+      <Ball onSwinger={setSwingerIndex} />
     </>
   );
 }

@@ -13,7 +13,78 @@ import * as THREE from "three";
 // animated players can share one loaded/parsed asset.
 const MODEL_URL = "/models/xbot.glb";
 
-export type PlayerAnimation = "idle" | "walk" | "run";
+export type PlayerAnimation = "idle" | "walk" | "run" | "kick" | "shoot" | "dive" | "swing";
+
+// --- Hand-authored sport-action clips ---
+//
+// xbot.glb only bakes in idle/walk/run (+ a few unused gesture clips) — no
+// kick/shoot/dive/racket-swing. Sourcing real mocap for those would need a
+// Mixamo account and FBX->glTF retargeting tooling that isn't available in
+// this environment, so these are instead built directly as THREE
+// AnimationClips against the rig's own real bone names (confirmed via
+// parsing xbot.glb's JSON chunk — it's an actual Mixamo skeleton, bones
+// prefixed "mixamorig:"), played through the same AnimationMixer every
+// other clip already uses. Stylized, not mocap-quality — enough to read as
+// a distinct action from the background-canvas viewing distance.
+function eulerQuat(x: number, y: number, z: number): [number, number, number, number] {
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
+  return [q.x, q.y, q.z, q.w];
+}
+
+function quatTrack(bone: string, times: number[], eulers: [number, number, number][]): THREE.QuaternionKeyframeTrack {
+  const values = eulers.flatMap(([x, y, z]) => eulerQuat(x, y, z));
+  return new THREE.QuaternionKeyframeTrack(`${bone}.quaternion`, times, values);
+}
+
+const B = "mixamorig:";
+
+// A football kick: right leg winds up, swings through contact, follows
+// through; torso counter-leans, arms fling out for balance.
+const kickClip = new THREE.AnimationClip("kick", 0.6, [
+  quatTrack(`${B}RightUpLeg`, [0, 0.2, 0.35, 0.6], [[0.3, 0, 0], [-0.6, 0, 0], [-0.9, 0, 0], [0, 0, 0]]),
+  quatTrack(`${B}RightLeg`, [0, 0.2, 0.35, 0.6], [[0.2, 0, 0], [-0.1, 0, 0], [0, 0, 0], [0.1, 0, 0]]),
+  quatTrack(`${B}Spine`, [0, 0.35, 0.6], [[-0.05, 0, 0], [0.15, 0, 0], [0, 0, 0]]),
+  quatTrack(`${B}LeftArm`, [0, 0.35, 0.6], [[0, 0, -0.2], [0, 0, -0.5], [0, 0, -0.2]]),
+  quatTrack(`${B}RightArm`, [0, 0.35, 0.6], [[0, 0, 0.2], [0, 0, 0.5], [0, 0, 0.2]]),
+]);
+
+// A basketball jump shot: crouch, extend upward, arms rise to a release
+// point overhead, follow-through.
+const shootClip = new THREE.AnimationClip("shoot", 0.7, [
+  quatTrack(`${B}LeftUpLeg`, [0, 0.3, 0.7], [[0.3, 0, 0], [0, 0, 0], [0.25, 0, 0]]),
+  quatTrack(`${B}RightUpLeg`, [0, 0.3, 0.7], [[0.3, 0, 0], [0, 0, 0], [0.25, 0, 0]]),
+  quatTrack(`${B}LeftArm`, [0, 0.4, 0.7], [[0, 0, -0.3], [0, 0, -1.6], [0, 0, -1.2]]),
+  quatTrack(`${B}RightArm`, [0, 0.4, 0.7], [[0, 0, 0.3], [0, 0, 1.6], [0, 0, 1.2]]),
+  quatTrack(`${B}LeftForeArm`, [0, 0.4, 0.7], [[0, -1.1, 0], [0, -0.2, 0], [0, -0.4, 0]]),
+  quatTrack(`${B}RightForeArm`, [0, 0.4, 0.7], [[0, 1.1, 0], [0, 0.2, 0], [0, 0.4, 0]]),
+  quatTrack(`${B}Spine`, [0, 0.4, 0.7], [[0.1, 0, 0], [-0.1, 0, 0], [0, 0, 0]]),
+]);
+
+// A goalkeeper-style lateral dive: torso and hips roll to one side, arm
+// reaches out, held down briefly before recovery.
+const diveClip = new THREE.AnimationClip("dive", 0.8, [
+  quatTrack(`${B}Spine`, [0, 0.35, 0.6, 0.8], [[0, 0, 0], [0.2, 0, 0.7], [0.3, 0, 0.9], [0.2, 0, 0.6]]),
+  quatTrack(`${B}Spine1`, [0, 0.35, 0.6, 0.8], [[0, 0, 0], [0.1, 0, 0.4], [0.15, 0, 0.5], [0.1, 0, 0.35]]),
+  quatTrack(`${B}RightArm`, [0, 0.3, 0.6, 0.8], [[0, 0, 0.3], [0, 0.2, 1.2], [0, 0.3, 1.4], [0, 0.2, 1.1]]),
+  quatTrack(`${B}Hips`, [0, 0.35, 0.8], [[0, 0, 0], [0, 0.3, 0.3], [0, 0.25, 0.25]]),
+  quatTrack(`${B}RightUpLeg`, [0, 0.3, 0.8], [[0, 0, 0], [-0.4, 0, 0.3], [-0.2, 0, 0.2]]),
+]);
+
+// A tennis forehand swing: arm winds up behind the body, sweeps through
+// contact, follows through across the torso; spine rotates through the hit.
+const swingClip = new THREE.AnimationClip("swing", 0.6, [
+  quatTrack(`${B}RightArm`, [0, 0.25, 0.6], [[0.2, -0.6, -1.3], [-0.2, 0.5, 0.9], [-0.4, 1.0, 1.5]]),
+  quatTrack(`${B}RightForeArm`, [0, 0.25, 0.6], [[0, 0, -0.9], [0, 0, -0.1], [0, 0, -0.4]]),
+  quatTrack(`${B}Spine`, [0, 0.25, 0.6], [[0, -0.5, 0], [0, 0.4, 0], [0, 0.6, 0]]),
+  quatTrack(`${B}LeftArm`, [0, 0.25, 0.6], [[0, 0, -0.3], [0, 0, -0.8], [0, 0, -0.6]]),
+]);
+
+const SPORT_CLIPS: Partial<Record<PlayerAnimation, THREE.AnimationClip>> = {
+  kick: kickClip,
+  shoot: shootClip,
+  dive: diveClip,
+  swing: swingClip,
+};
 
 export interface OrbitPath {
   radius: number;
@@ -58,7 +129,11 @@ export default function Player({
   const { scene, animations } = useGLTF(MODEL_URL);
   const cloned = useMemo(() => cloneSkeleton(scene), [scene]);
   const group = useRef<THREE.Group>(null);
-  const { actions } = useAnimations(animations, group);
+  const { actions, mixer } = useAnimations(animations, group);
+  // Hand-authored sport-action clips aren't part of the loaded GLTF, so
+  // `actions` (built by useAnimations from `animations`) doesn't know about
+  // them — registered directly on the same mixer instead, once per mount.
+  const customActions = useRef<Partial<Record<PlayerAnimation, THREE.AnimationAction>>>({});
 
   useEffect(() => {
     cloned.traverse((child) => {
@@ -72,7 +147,17 @@ export default function Player({
   }, [cloned, color]);
 
   useEffect(() => {
-    const action = actions[animation];
+    if (!group.current) return;
+    for (const [name, clip] of Object.entries(SPORT_CLIPS)) {
+      const action = mixer.clipAction(clip, group.current);
+      action.setLoop(THREE.LoopOnce, 1);
+      action.clampWhenFinished = true;
+      customActions.current[name as PlayerAnimation] = action;
+    }
+  }, [mixer]);
+
+  useEffect(() => {
+    const action = actions[animation] ?? customActions.current[animation];
     action?.reset().fadeIn(0.2).setEffectiveTimeScale(speed).play();
     return () => {
       action?.fadeOut(0.2);

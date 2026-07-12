@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { GAME_TICKS_CHANNEL } from '../redis/redis-channels';
 import { NormalizedEvent } from './parsers/parser.interface';
+import { CompetitionsService } from '../competitions/competitions.service';
 
 // Maps a source-agnostic NormalizedEvent onto our Prisma schema via
 // upserts keyed on each model's natural key, then publishes the same
@@ -15,6 +16,7 @@ export class NormalizeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly competitions: CompetitionsService,
   ) {}
 
   private publishTick(gameKey: string, payload: unknown) {
@@ -76,6 +78,12 @@ export class NormalizeService {
       this.upsertTeam(event.awayName, event.awayShortName, event.awayColor, event.awayCountry, sport),
     ]);
 
+    const competitionRow = await this.competitions.resolveCompetition(sport, event.competition);
+    await Promise.all([
+      this.competitions.ensureTeamCompetition(homeTeam.id, competitionRow.id),
+      this.competitions.ensureTeamCompetition(awayTeam.id, competitionRow.id),
+    ]);
+
     const naturalKey = {
       sport_competition_kickoff_homeTeamId_awayTeamId: {
         sport,
@@ -94,11 +102,13 @@ export class NormalizeService {
         status: event.status,
         homeScore: event.homeScore,
         awayScore: event.awayScore,
+        competitionId: competitionRow.id,
         ...(sport === 'football' ? { minute: event.minute ?? null } : {}),
       },
       create: {
         sport,
         competition: event.competition,
+        competitionId: competitionRow.id,
         kickoff: event.kickoff,
         venue: '',
         status: event.status,
@@ -182,6 +192,10 @@ export class NormalizeService {
       this.upsertPlayer(event.awayName, event.awayCountry, tour, event.awayRanking),
     ]);
 
+    // Tennis has no Team concept, so no TeamCompetition upsert here — just
+    // resolve the competitionId onto the match itself.
+    const competitionRow = await this.competitions.resolveCompetition('tennis', event.competition);
+
     const round = event.round ?? '';
     const naturalKey = {
       tour_tournament_round_startTime_player1Id_player2Id: {
@@ -205,11 +219,13 @@ export class NormalizeService {
       where: naturalKey,
       update: {
         status: event.status,
+        competitionId: competitionRow.id,
         ...(winnerId ? { winnerId } : {}),
       },
       create: {
         tour,
         tournament: event.competition,
+        competitionId: competitionRow.id,
         round,
         venue: '',
         startTime: event.kickoff,

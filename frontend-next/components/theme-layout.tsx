@@ -15,18 +15,33 @@ import { Badge } from "@/components/ui/badge";
 const SportBackgroundCanvas = dynamic(() => import("@/three/SportBackgroundCanvas"), { ssr: false });
 
 // Sets the per-sport CSS variables; everything inside styles itself off them.
-export default function ThemeLayout({ sport, children }: { sport: SportKey; children: ReactNode }) {
+// `competitionAccent`/`competitionLabel` are optional overrides for a
+// competition hub page (e.g. Champions League's own blue/silver instead of
+// generic football green) — additive, not a new 3D scene (see
+// theme/sportsTheme.ts's competitionAccents comment).
+export default function ThemeLayout({
+  sport,
+  competitionAccent,
+  competitionLabel,
+  children,
+}: {
+  sport: SportKey;
+  competitionAccent?: string;
+  competitionLabel?: string;
+  children: ReactNode;
+}) {
   const theme = sportsTheme[sport];
   const { t } = useLang();
+  const accent = competitionAccent ?? theme.accent;
   return (
     <div
       className="relative z-0 min-h-screen pb-16"
       style={
         {
           background: theme.background,
-          "--sport-accent": theme.accent,
+          "--sport-accent": accent,
           "--sport-accent-soft": theme.accentSoft,
-          "--sport-glow": theme.glow,
+          "--sport-glow": competitionAccent ?? theme.glow,
         } as CSSProperties
       }
     >
@@ -42,6 +57,7 @@ export default function ThemeLayout({ sport, children }: { sport: SportKey; chil
       <div className="relative flex items-center justify-center border-b border-white/10 bg-black/30 px-4 py-3 backdrop-blur-sm">
         <Badge className="bg-white/15 text-white" variant="outline">
           {theme.emoji} {t(`sport_${sport}` as TKey)}
+          {competitionLabel ? ` · ${competitionLabel}` : ""}
         </Badge>
       </div>
 

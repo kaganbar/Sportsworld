@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AgentCallerService } from '../common/agent-caller.service';
+import { CompetitionsService } from '../../competitions/competitions.service';
 import { NewsClusterSummarySchema, NewsClusterSummary } from './news-agent.schema';
 
 const SYSTEM_PROMPT = `You are the SportsWorld News Agent. You receive a JSON list of
@@ -47,7 +48,21 @@ export class NewsAgentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly agentCaller: AgentCallerService,
+    private readonly competitions: CompetitionsService,
   ) {}
+
+  /** Best-effort competition tagging (see CompetitionsService.competitionsForText):
+   * matches team/player names mentioned in the cluster's own text against
+   * known Team/TennisPlayer names, no new Claude call — deterministic
+   * string matching, same cost profile as clustering itself. */
+  private async tagClusterCompetitions(clusterId: number, text: string) {
+    const competitionIds = await this.competitions.competitionsForText(text);
+    if (competitionIds.length === 0) return;
+    await this.prisma.newsStoryCluster.update({
+      where: { id: clusterId },
+      data: { competitions: { set: competitionIds.map((id) => ({ id })) } },
+    });
+  }
 
   private mockSummary(articleCount: number): NewsClusterSummary {
     return {
@@ -109,6 +124,7 @@ export class NewsAgentService {
         where: { id: { in: bucket.articleIds } },
         data: { clusterId: cluster.id },
       });
+      await this.tagClusterCompetitions(cluster.id, bucket.headline);
       clustered += bucket.articleIds.length;
     }
 
@@ -145,6 +161,9 @@ export class NewsAgentService {
         where: { id: cluster.id },
         data: { headline: result.headline, summary: result.summary },
       });
+      // Re-tag with the fuller summarized text — more team-name surface
+      // area than the raw first-article headline used at cluster creation.
+      await this.tagClusterCompetitions(cluster.id, `${result.headline} ${result.summary}`);
     }
   }
 

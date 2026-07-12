@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AgentCallerService } from '../common/agent-caller.service';
+import { CompetitionsService } from '../../competitions/competitions.service';
 import { TransferStoryAssessmentSchema, TransferStoryAssessment } from './transfer-agent.schema';
 
 const SYSTEM_PROMPT = `You are the SportsWorld Transfer Agent. You receive a JSON list of
@@ -22,7 +23,21 @@ export class TransferAgentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly agentCaller: AgentCallerService,
+    private readonly competitions: CompetitionsService,
   ) {}
+
+  /** Best-effort competition tagging (see CompetitionsService.competitionsForText)
+   * — fromClub/toClub are structured text already, no headline-parsing
+   * needed, just matched directly against known Team names. */
+  private async tagStoryCompetitions(storyId: number, fromClub: string | null, toClub: string) {
+    const text = `${fromClub ?? ''} ${toClub}`;
+    const competitionIds = await this.competitions.competitionsForText(text);
+    if (competitionIds.length === 0) return;
+    await this.prisma.transferStory.update({
+      where: { id: storyId },
+      data: { competitions: { set: competitionIds.map((id) => ({ id })) } },
+    });
+  }
 
   private mockAssessment(reportCount: number): TransferStoryAssessment {
     return {
@@ -50,16 +65,18 @@ export class TransferAgentService {
       });
       const match = candidates.find((c) => norm(c.playerName) === norm(report.playerName));
 
-      const story =
-        match ??
-        (await this.prisma.transferStory.create({
+      let story = match;
+      if (!story) {
+        story = await this.prisma.transferStory.create({
           data: {
             playerName: report.playerName,
             fromClub: report.fromClub,
             toClub: report.toClub,
             status: report.status,
           },
-        }));
+        });
+        await this.tagStoryCompetitions(story.id, report.fromClub, report.toClub);
+      }
 
       await this.prisma.transferReport.update({ where: { id: report.id }, data: { storyId: story.id } });
       grouped++;
