@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
-import { SiteHeader } from "@/components/site-header";
+import { AppSidebar, MobileTopBar } from "@/components/app-sidebar";
 import SportTransition from "@/components/sport-transition";
 
 // One family, used consistently, rather than a font-pairing gimmick — Rubik
@@ -28,8 +28,13 @@ export default function RootLayout({
     <html lang="en" className={rubik.variable}>
       <body className="bg-neutral-950 text-white">
         <Providers>
-          <SiteHeader />
-          <SportTransition>{children}</SportTransition>
+          <div className="flex min-h-screen">
+            <AppSidebar />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <MobileTopBar />
+              <SportTransition>{children}</SportTransition>
+            </div>
+          </div>
         </Providers>
       </body>
     </html>

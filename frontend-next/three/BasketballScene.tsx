@@ -7,6 +7,7 @@ import Player from "./Player";
 import Crowd from "./Crowd";
 import { Stand, FloodlightPole } from "./Stadium";
 import { orbitPosition, lerp3 } from "./orbitMath";
+import GalaxyBackdrop from "./GalaxyBackdrop";
 
 const HOME_COLOR = "#ea580c";
 const AWAY_COLOR = "#1d4ed8";
@@ -106,7 +107,12 @@ export default function BasketballScene() {
   return (
     <>
       <CameraDrift />
+      <GalaxyBackdrop />
       <ambientLight intensity={0.45} />
+      {/* Low-intensity cool violet-blue fill — ties the scene into the new
+          Galaxy palette without touching the tuned warm GLOW/directional
+          rig below. */}
+      <ambientLight intensity={0.1} color="#241b4d" />
       <directionalLight position={[5, 8, 4]} intensity={0.6} />
       <spotLight position={[0, 9, 0]} angle={0.65} penumbra={0.5} intensity={0.85} color={GLOW} />
 

@@ -25,7 +25,7 @@ export default function CompetitionPicker({ sport, basePath }: { sport: ApiSport
 
   return (
     <div>
-      <h2 className="mb-4 text-xl font-bold text-white">{t("selectCompetition")}</h2>
+      <h2 className="mb-4 text-xl font-bold leading-snug text-white">{t("selectCompetition")}</h2>
       {error && <p className="rounded-md bg-red-950/50 p-3 text-sm text-red-200">{error}</p>}
       {!competitions && !error && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -40,11 +40,14 @@ export default function CompetitionPicker({ sport, basePath }: { sport: ApiSport
           return (
             <Link key={c.slug} href={`${basePath}/${c.slug}`}>
               <Card
-                className="flex h-20 items-center justify-center p-3 text-center text-sm font-semibold text-white transition hover:scale-[1.02] hover:bg-accent"
+                className="flex h-20 items-center justify-center p-3 text-center transition hover:scale-[1.02] hover:bg-accent"
                 style={accent ? { borderColor: accent, boxShadow: `0 0 0 1px ${accent}33` } : undefined}
                 variant="glass"
               >
-                {c.name}
+                {/* line-clamp-2 + break-words: a long (esp. Hebrew) competition
+                    name must wrap and clip gracefully within the fixed-height
+                    tile, never overflow it. */}
+                <span className="line-clamp-2 break-words text-sm font-semibold leading-snug text-white">{c.name}</span>
               </Card>
             </Link>
           );

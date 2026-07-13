@@ -187,11 +187,23 @@ const LangContext = createContext<LangContextValue>({
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>(() => {
-    if (typeof window === "undefined") return "he";
+  // Defaults to "he" on BOTH server and first client render — reading
+  // localStorage inside the initializer (the previous approach) computes
+  // "en" on the client's very first render whenever a returning user has
+  // that persisted, which never matches the server-rendered "he" HTML and
+  // triggers a full hydration-mismatch/client-re-render. A real, concrete
+  // instance of this was hit once a component's first render started
+  // depending on `lang` for something more than translated text (the
+  // sidebar's collapse-chevron direction) — text mismatches degrade
+  // gracefully, but a differing SVG path attribute doesn't. The persisted
+  // value is applied in a useEffect after mount instead, same fix pattern
+  // used in lib/sidebar-state.tsx.
+  const [lang, setLang] = useState<Lang>("he");
+
+  useEffect(() => {
     const stored = window.localStorage.getItem("lang");
-    return stored === "en" ? "en" : "he";
-  });
+    if (stored === "en") setLang("en");
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("lang", lang);

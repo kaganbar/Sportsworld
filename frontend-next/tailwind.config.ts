@@ -23,7 +23,25 @@ const config: Config = {
         premium: "0 4px 16px -4px rgb(0 0 0 / 0.25), 0 16px 48px -8px rgb(0 0 0 / 0.35)",
         glow: "0 0 32px -4px var(--sport-glow, var(--sport-accent, transparent))",
       },
+      backgroundImage: {
+        // The shared dark backdrop for every page NOT wrapped in ThemeLayout
+        // (which has its own per-sport gradient + 3D canvas) — a "Galaxy
+        // Style" deep-space gradient used by PageShell, so pages stop
+        // hand-copying an inline gradient string per file.
+        "galaxy-shell":
+          "radial-gradient(circle at 50% 0%, rgba(124,108,255,0.14), transparent 55%), linear-gradient(180deg, #05050a, #0d0b16 55%, #05050a)",
+      },
       colors: {
+        // "Galaxy" accent scale — the deep-space palette backing the new
+        // PageShell/sidebar chrome. Kept as plain hex (not the hsl(var(--x))
+        // shadcn convention) since it's consumed via gradients/glows, not
+        // discrete utility swaps.
+        galaxy: {
+          void: "#05050a",
+          deep: "#0a0a12",
+          nebula: "#171233",
+          glow: "#7c6cff",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

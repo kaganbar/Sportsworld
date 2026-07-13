@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 
 import { TKey, useLang } from "@/lib/i18n";
 import { SportKey, sportsTheme } from "@/theme/sportsTheme";
-import { Badge } from "@/components/ui/badge";
+import { HeaderBadge } from "@/components/header-badge";
 
 // next/dynamic with ssr:false is the actual "client-only, never rendered on
 // the server" boundary in Next.js — SportBackgroundCanvas touches
@@ -54,12 +54,7 @@ export default function ThemeLayout({
           page. */}
       <div className="pointer-events-none fixed inset-0 -z-[5] bg-gradient-to-b from-black/30 via-black/10 to-black/35 backdrop-blur-[2px]" />
 
-      <div className="relative flex items-center justify-center border-b border-white/10 bg-black/30 px-4 py-3 backdrop-blur-sm">
-        <Badge className="bg-white/15 text-white" variant="outline">
-          {theme.emoji} {t(`sport_${sport}` as TKey)}
-          {competitionLabel ? ` · ${competitionLabel}` : ""}
-        </Badge>
-      </div>
+      <HeaderBadge icon={theme.emoji} label={t(`sport_${sport}` as TKey)} sub={competitionLabel} />
 
       <div className="relative mx-auto max-w-3xl px-4 py-6">{children}</div>
     </div>

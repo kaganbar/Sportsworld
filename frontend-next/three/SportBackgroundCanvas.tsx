@@ -34,6 +34,12 @@ export default function SportBackgroundCanvas({ sport }: { sport: SportKey }) {
     // position:fixed only changes what it's sized/pinned against.
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       <Canvas
+        // @react-three/fiber sets its own inline pointer-events on the
+        // actual <canvas> element, which otherwise overrides this wrapper
+        // div's pointer-events-none class (a real bug hit while adding the
+        // new sidebar: its collapse button became unclickable because the
+        // canvas was silently capturing the click underneath it).
+        style={{ pointerEvents: "none" }}
         dpr={[1, 1.5]}
         gl={{ antialias: false, powerPreference: "low-power", alpha: true }}
         camera={{ position: [0, 6, 8], fov: 50 }}

@@ -13,8 +13,11 @@ export const sportsTheme = {
     // deliberately: ThemeLayout's own scrim is what handles "darkened for
     // readability" now — stacking a second, independently-darkened base
     // color under that scrim crushed everything toward solid black.
+    // The added far-edge vignette (a dark, cool near-black) ties football's
+    // background into the same "Galaxy" dark-edge family basketball/tennis
+    // already have, without touching the visible grass band's brightness.
     background:
-      "radial-gradient(circle at 50% 15%, rgba(255,255,255,0.1), transparent 60%), repeating-linear-gradient(90deg, #14601f 0px, #14601f 90px, #187226 90px, #187226 180px)",
+      "radial-gradient(circle at 50% 15%, rgba(255,255,255,0.1), transparent 60%), radial-gradient(ellipse at 50% 100%, rgba(5,5,15,0.55), transparent 60%), repeating-linear-gradient(90deg, #14601f 0px, #14601f 90px, #187226 90px, #187226 180px)",
     glow: "#4ade80",
     available: true,
   },
@@ -23,8 +26,12 @@ export const sportsTheme = {
     emoji: "🏀",
     accent: "#c2410c",
     accentSoft: "#ea580c",
+    // Dark stop nudged from a warm brown toward a cooler, less-saturated
+    // near-black so its far-edge luminance family matches tennis's navy
+    // (both now read as "Galaxy dark," not two unrelated tones) — the
+    // dominant wood-orange identity color is untouched.
     background:
-      "radial-gradient(circle at 50% 15%, rgba(255,255,255,0.1), transparent 55%), linear-gradient(160deg, #7c2d12, #c2410c)",
+      "radial-gradient(circle at 50% 15%, rgba(255,255,255,0.1), transparent 55%), linear-gradient(160deg, #241710, #c2410c)",
     glow: "#fb923c",
     available: true,
   },

@@ -7,6 +7,7 @@ import Player from "./Player";
 import Crowd from "./Crowd";
 import { Stand, FloodlightPole } from "./Stadium";
 import { swayPosition, lerp3 } from "./orbitMath";
+import GalaxyBackdrop from "./GalaxyBackdrop";
 
 const PLAYER_1_COLOR = "#ffffff";
 const PLAYER_2_COLOR = "#1e40af";
@@ -78,7 +79,12 @@ export default function TennisScene() {
   return (
     <>
       <CameraDrift />
+      <GalaxyBackdrop />
       <ambientLight intensity={0.5} />
+      {/* Low-intensity cool violet-blue fill — ties the scene into the new
+          Galaxy palette without touching the tuned GLOW/directional rig
+          below. */}
+      <ambientLight intensity={0.1} color="#241b4d" />
       <directionalLight position={[5, 8, 4]} intensity={0.65} />
       <spotLight position={[0, 9, 0]} angle={0.6} penumbra={0.5} intensity={0.7} color={GLOW} />
 

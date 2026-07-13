@@ -31,9 +31,12 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("font-semibold leading-none tracking-tight", className)} {...props} />
-  ),
+  // No tracking-tight: this app is Hebrew-first (RTL default), and tight
+  // kerning has no Hebrew equivalent — it just crowds similar letterforms
+  // (ד/ר, ג/נ). leading-snug (not leading-none) gives multi-line Hebrew
+  // titles room to breathe without going as loose as leading-relaxed,
+  // appropriate for a heading rather than body copy.
+  ({ className, ...props }, ref) => <h3 ref={ref} className={cn("font-semibold leading-snug", className)} {...props} />,
 );
 CardTitle.displayName = "CardTitle";
 

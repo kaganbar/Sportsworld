@@ -50,7 +50,7 @@ export function Tabs({
 
 export function TabsList({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div role="tablist" className={cn("inline-flex flex-wrap items-center gap-1 rounded-lg bg-white/5 p-1 backdrop-blur-sm", className)}>
+    <div role="tablist" className={cn("glass-panel inline-flex flex-wrap items-center gap-1 rounded-lg p-1", className)}>
       {children}
     </div>
   );
