@@ -52,13 +52,26 @@ export default function WorldCameraRig() {
   const prevZoneRef = useRef<ActiveZone>(activeZone);
   const dockedRef = useRef<Dock>(dockFor(activeZone));
   const transitionRef = useRef<{ from: Dock; to: Dock; elapsed: number } | null>(null);
+  // Tracks where the camera is actually looking every frame (position itself
+  // is already readable straight off `camera.position`, but Three has no
+  // symmetric getter for the point passed to the last `camera.lookAt()`) —
+  // needed so an interrupted transition (zone changes again before the
+  // current tween finishes) can start its "from" dock at the camera's real
+  // current state instead of the stale pre-transition dock.
+  const currentLookAtRef = useRef<THREE.Vector3>(dockFor(activeZone).lookAt.clone());
 
   useEffect(() => {
     if (activeZone !== prevZoneRef.current) {
-      transitionRef.current = { from: dockedRef.current, to: dockFor(activeZone), elapsed: 0 };
+      const cam = camera as PerspectiveCamera;
+      const from: Dock = {
+        position: camera.position.clone(),
+        lookAt: currentLookAtRef.current.clone(),
+        fov: cam.fov,
+      };
+      transitionRef.current = { from, to: dockFor(activeZone), elapsed: 0 };
       prevZoneRef.current = activeZone;
     }
-  }, [activeZone]);
+  }, [activeZone, camera]);
 
   useFrame(({ clock }, delta) => {
     const cam = camera as PerspectiveCamera;
@@ -73,6 +86,7 @@ export default function WorldCameraRig() {
       camera.position.copy(tr.from.position).lerp(tr.to.position, eased);
       const look = tr.from.lookAt.clone().lerp(tr.to.lookAt, eased);
       camera.lookAt(look);
+      currentLookAtRef.current.copy(look);
 
       const fov = THREE.MathUtils.lerp(tr.from.fov, tr.to.fov, eased);
       if (Math.abs(cam.fov - fov) > 0.01) {
@@ -91,6 +105,7 @@ export default function WorldCameraRig() {
     if (activeZone === "home") {
       camera.position.copy(docked.position);
       camera.lookAt(docked.lookAt);
+      currentLookAtRef.current.copy(docked.lookAt);
       return;
     }
 
@@ -99,6 +114,7 @@ export default function WorldCameraRig() {
     const swayY = Math.sin(t * Y_SWAY_SPEED) * Y_SWAY_AMP;
     camera.position.set(docked.position.x + swayX, docked.position.y + swayY, docked.position.z);
     camera.lookAt(docked.lookAt);
+    currentLookAtRef.current.copy(docked.lookAt);
   });
 
   return null;
