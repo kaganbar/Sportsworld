@@ -11,7 +11,20 @@ const TRAIL_LENGTH = 6;
 // mutable ref array the parent scene's own ball useFrame pushes recent
 // positions onto — read directly here (not via React state/props) so
 // updating the trail every frame doesn't trigger a re-render.
-export default function BallTrail({ positionsRef }: { positionsRef: MutableRefObject<[number, number, number][]> }) {
+//
+// `baseSize` defaults to football/basketball's original hardcoded 0.16 (their
+// ball radii are 0.11/0.12, so this already reads as a deliberately oversized
+// motion-blur streak, not the ball's own size) — tennis's ball is 0.034, over
+// 4x smaller, so the same 0.16 would render trail blobs visibly bigger than
+// the ball itself. Callers with a much smaller ball should pass a smaller
+// baseSize instead of inheriting this default.
+export default function BallTrail({
+  positionsRef,
+  baseSize = 0.16,
+}: {
+  positionsRef: MutableRefObject<[number, number, number][]>;
+  baseSize?: number;
+}) {
   const groupRef = useRef<Group>(null);
 
   useFrame(() => {
@@ -38,7 +51,7 @@ export default function BallTrail({ positionsRef }: { positionsRef: MutableRefOb
     <group ref={groupRef}>
       {Array.from({ length: TRAIL_LENGTH }).map((_, i) => (
         <mesh key={i}>
-          <sphereGeometry args={[0.16, 8, 8]} />
+          <sphereGeometry args={[baseSize, 8, 8]} />
           <meshBasicMaterial color="#ffffff" transparent opacity={0.35 * (1 - i / TRAIL_LENGTH)} depthWrite={false} />
         </mesh>
       ))}

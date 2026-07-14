@@ -148,7 +148,10 @@ function Ball({
         <sphereGeometry args={[BALL_RADIUS, 12, 12]} />
         <meshStandardMaterial color="#d4f04c" />
       </mesh>
-      <BallTrail positionsRef={trailRef} />
+      {/* baseSize scaled down from BallTrail's football/basketball default
+          (0.16) — this ball's own radius (0.034) is over 4x smaller, so the
+          same trail size would render bigger than the ball it's trailing. */}
+      <BallTrail positionsRef={trailRef} baseSize={0.06} />
     </>
   );
 }
