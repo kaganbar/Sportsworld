@@ -9,6 +9,7 @@ function OptionButton({ active, onClick, children }: { active: boolean; onClick:
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={cn(
         "flex-1 rounded-xl border px-4 py-3 text-sm font-semibold transition",

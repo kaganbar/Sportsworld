@@ -46,6 +46,7 @@ function NavLinks({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: 
             key={key}
             href={`/${key}`}
             onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
               active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white",
@@ -61,6 +62,7 @@ function NavLinks({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: 
       <Link
         href="/other-sports"
         onClick={onNavigate}
+        aria-current={pathname === "/other-sports" ? "page" : undefined}
         className={cn(
           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
           pathname === "/other-sports" ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white",
@@ -79,6 +81,7 @@ function NavLinks({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: 
             key={href}
             href={href}
             onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
               active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white",
