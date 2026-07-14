@@ -183,15 +183,17 @@ interface PlayerProps {
   target?: TargetPath;
 }
 
-// xbot.glb bakes in four gesture/pose clips ("agree", "headShake",
-// "sad_pose", "sneak_pose") this project only used two of — confirmed by
-// parsing the glb's own JSON chunk directly (its `animations` array lists
-// all four by name), not guessed. Playing them occasionally is a zero-asset
-// way to break up an otherwise frozen idle loop (see the plan's Context
-// section: no real physics/mocap idle variety is achievable here, but using
-// clips that already exist in the file is) — more variants means less
-// chance of two nearby idle players visibly syncing on the same gesture.
-const IDLE_GESTURES = ["agree", "headShake", "sad_pose", "sneak_pose"] as const;
+// xbot.glb bakes in two real gesture clips this project uses for idle
+// variety. It also bakes "sad_pose"/"sneak_pose" — confirmed by parsing the
+// glb's own JSON chunk directly (GLB is just a binary header + a JSON glTF
+// document + a binary buffer, no tooling needed to read it) that these two
+// are each only ~0.07s (a single held keyframe, not an animated gesture),
+// versus agree's 1.83s and headShake's 2.57s. Deliberately NOT added to the
+// idle rotation below: playing a 0.07s clip through the same fadeIn/hold/
+// fadeOut treatment as a ~2s gesture would read as the character snapping
+// into a static pose, not gesturing — inconsistent with the other two
+// entries despite being valid, loadable clips.
+const IDLE_GESTURES = ["agree", "headShake"] as const;
 
 export default function Player({
   color,
@@ -238,10 +240,15 @@ export default function Player({
         const mat = mesh.material as THREE.MeshStandardMaterial;
         mat.color.set(color);
         // The source glb's joint material ships at metalness 0.5 — a bit
-        // shiny/plastic-toy at this camera distance. Softening it (no other
-        // per-part material split exists in this asset to differentiate
-        // skin from kit — confirmed by inspecting the glb directly) reads
-        // closer to matte fabric/skin.
+        // shiny/plastic-toy at this camera distance. Softening it reads
+        // closer to matte fabric/skin. (The glb does have 2 materials
+        // across its 2 meshes — "Beta_Joints"/"Beta_Surface", each with its
+        // own baseColorFactor in the source asset — confirmed by parsing the
+        // glb's JSON chunk directly, correcting an earlier claim here that
+        // no per-part split existed. Deliberately still recolored uniformly
+        // rather than kept two-tone: this whole scene's crowd/player/ball
+        // sizing is tuned for "reads as team color X from background-canvas
+        // distance," which a two-tone player would work against, not for.)
         if (mat.metalness > 0.2) mat.metalness = 0.15;
       }
     });
