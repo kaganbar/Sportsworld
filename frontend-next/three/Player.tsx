@@ -181,6 +181,19 @@ interface PlayerProps {
   orbit?: OrbitPath;
   sway?: SwayPath;
   target?: TargetPath;
+  // Skips the per-frame idle-gesture bookkeeping and target/orbit/sway
+  // position math below when the player's zone isn't the one the camera is
+  // currently docked at — same pattern each scene's Ball/Goalkeeper/ArenaRig
+  // already uses (see FootballScene.tsx's `active` comment). Every zone is
+  // always mounted (PersistentWorld), and Player is by far the most numerous
+  // component in each scene, so leaving it ungated meant this was the one
+  // per-frame cost NOT skipped for the two zones off-camera at any moment.
+  // Defaults to true — every existing caller that doesn't pass it keeps
+  // running exactly as before. The AnimationMixer update itself (drei's
+  // useAnimations, not this component's own useFrame) is untouched; freezing
+  // position while inactive is imperceptible since nothing is rendering that
+  // zone, matching how the gated Ball/Goalkeeper already just freeze in place.
+  active?: boolean;
 }
 
 // xbot.glb bakes in two real gesture clips this project uses for idle
@@ -205,6 +218,7 @@ export default function Player({
   orbit,
   sway,
   target,
+  active = true,
 }: PlayerProps) {
   const { scene, animations } = useGLTF(MODEL_URL);
   const cloned = useMemo(() => cloneSkeleton(scene), [scene]);
@@ -285,7 +299,7 @@ export default function Player({
   }, [actions, animation, speed]);
 
   useFrame(({ clock }, delta) => {
-    if (!group.current) return;
+    if (!group.current || !active) return;
 
     // Idle-gesture variation: while explicitly idling, OR while settled
     // near a formation slot (target mode, velocity near zero) — a player

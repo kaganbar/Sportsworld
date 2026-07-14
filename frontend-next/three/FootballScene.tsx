@@ -239,6 +239,7 @@ function Goalkeeper({
       color={color}
       animation={diving ? "dive" : "idle"}
       sway={{ base, axis: "x", amplitude: GOAL_WIDTH / 2 - 0.5, speed: 0.5, offset: phaseOffset, facingY: 0 }}
+      active={active}
     />
   );
 }
@@ -292,6 +293,7 @@ export default function FootballScene() {
             color={p.color}
             animation={kickerIndex === i ? "kick" : "run"}
             target={{ x: slot.x, z: slot.z + shiftZ, maxSpeed: 2.6 }}
+            active={active}
           />
         );
       })}

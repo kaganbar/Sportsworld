@@ -272,10 +272,11 @@ export default function BasketballScene() {
             color={p.color}
             animation={shooterIndex === i ? "shoot" : "run"}
             target={{ x: slot.x + shiftX, z: slot.z, maxSpeed: 2.6 }}
+            active={active}
           />
         );
       })}
-      <Player color={HOME_COLOR} animation="idle" position={[HALF_LENGTH - 6, 0, -3]} rotationY={Math.PI} />
+      <Player color={HOME_COLOR} animation="idle" position={[HALF_LENGTH - 6, 0, -3]} rotationY={Math.PI} active={active} />
 
       <Ball active={active} onShooter={setShooterIndex} hitAtLeft={hitAtLeft} hitAtRight={hitAtRight} />
     </>

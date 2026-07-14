@@ -232,11 +232,13 @@ export default function TennisScene() {
         color={PLAYER_1_COLOR}
         animation={swingerIndex === 0 ? "swing" : "run"}
         target={{ x: targets[0], z: PLAYER_BASE_Z[0], maxSpeed: 3, facingY: FACING_Y[0] }}
+        active={active}
       />
       <Player
         color={PLAYER_2_COLOR}
         animation={swingerIndex === 1 ? "swing" : "run"}
         target={{ x: targets[1], z: PLAYER_BASE_Z[1], maxSpeed: 3, facingY: FACING_Y[1] }}
+        active={active}
       />
 
       <Ball
