@@ -27,15 +27,15 @@ export default function BasketballPlayerProfile({ params }: { params: { id: stri
     >
       {error && <p className="rounded-md bg-red-950/50 p-3 text-sm text-red-200">{error}</p>}
       {!data && !error && <Skeleton className="mx-auto h-80 w-full max-w-[520px] rounded-[28px]" />}
-      {data && stats && (
+      {data && (
         <PlayerProfileCard
           name={data.name}
           team={data.team.name}
           position={data.position}
           stats={[
-            { label: t("playerPpg"), value: stats.ppg.toFixed(1) },
-            { label: t("playerRpg"), value: stats.rpg.toFixed(1) },
-            { label: t("playerApg"), value: stats.apg.toFixed(1) },
+            { label: t("playerPpg"), value: stats?.ppg != null ? stats.ppg.toFixed(1) : "-" },
+            { label: t("playerRpg"), value: stats?.rpg != null ? stats.rpg.toFixed(1) : "-" },
+            { label: t("playerApg"), value: stats?.apg != null ? stats.apg.toFixed(1) : "-" },
           ]}
         />
       )}

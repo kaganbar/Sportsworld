@@ -17,8 +17,13 @@ export interface Crumb {
 // has one via next/navigation), and "Back" is router.back(), which behaves
 // equivalently to the brief's history-pop for normal drill-down navigation.
 export default function BreadcrumbBar({ crumbs }: { crumbs: Crumb[] }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const router = useRouter();
+  // Baked-in direction, not Unicode bidi auto-mirroring — same convention
+  // the "back" translation string already uses ("‹ Back" vs "חזרה ›"): in
+  // RTL the flex row's main axis reverses (crumbs render right-to-left,
+  // deepest crumb on the left), so the separator pointing "deeper" flips too.
+  const separator = lang === "he" ? "‹" : "›";
 
   return (
     <div className="relative z-10 mb-4 flex flex-wrap items-center justify-between gap-4 px-4 pt-4">
@@ -34,7 +39,7 @@ export default function BreadcrumbBar({ crumbs }: { crumbs: Crumb[] }) {
                   {crumb.label}
                 </Link>
               )}
-              {!isLast && <span className="opacity-35">›</span>}
+              {!isLast && <span className="opacity-35">{separator}</span>}
             </span>
           );
         })}

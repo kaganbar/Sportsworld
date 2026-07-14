@@ -27,15 +27,15 @@ export default function FootballPlayerProfile({ params }: { params: { id: string
     >
       {error && <p className="rounded-md bg-red-950/50 p-3 text-sm text-red-200">{error}</p>}
       {!data && !error && <Skeleton className="mx-auto h-80 w-full max-w-[520px] rounded-[28px]" />}
-      {data && stats && (
+      {data && (
         <PlayerProfileCard
           name={data.name}
           team={data.team.name}
           position={data.position}
           stats={[
-            { label: t("playerGoals"), value: stats.goals },
-            { label: t("playerAssists"), value: stats.assists },
-            { label: t("playerRating"), value: stats.rating.toFixed(1) },
+            { label: t("playerGoals"), value: stats?.goals ?? "-" },
+            { label: t("playerAssists"), value: stats?.assists ?? "-" },
+            { label: t("playerRating"), value: stats?.rating != null ? stats.rating.toFixed(1) : "-" },
           ]}
         />
       )}
