@@ -66,3 +66,47 @@ export function FloodlightPole({
     </group>
   );
 }
+
+// Center-hung arena rig — a suspended scoreboard box on 4 cables with a
+// downward glow, replacing FloodlightPole for basketball. Real indoor
+// arenas light the court from an overhead rig above center court, not from
+// external corner poles (a real, if easy-to-miss, distinctness gap: before
+// this, basketball reused football's literal outdoor-stadium floodlight
+// poles). Same primitives/pattern as FloodlightPole (metal cylinder +
+// emissive glow mesh + pointLight + LightShaft), just a different silhouette
+// and position so the two scenes read as genuinely different venues rather
+// than the same rig re-colored.
+export function ArenaRig({
+  position = [0, 0, 0],
+  glowColor = "#fff2e0",
+  size = 3.6,
+}: {
+  position?: [number, number, number];
+  glowColor?: string;
+  size?: number;
+}) {
+  const cables: [number, number][] = [
+    [-size * 0.35, -size * 0.35],
+    [size * 0.35, -size * 0.35],
+    [-size * 0.35, size * 0.35],
+    [size * 0.35, size * 0.35],
+  ];
+  return (
+    <group position={position}>
+      {cables.map(([x, z], i) => (
+        <mesh key={i} position={[x, 10.5, z]}>
+          <cylinderGeometry args={[0.025, 0.025, 5, 6]} />
+          <meshStandardMaterial color="#1a1a1a" />
+        </mesh>
+      ))}
+      <mesh position={[0, 8, 0]}>
+        <boxGeometry args={[size, 1.4, size]} />
+        <meshPhysicalMaterial color="#0f0f12" metalness={0.55} roughness={0.35} emissive={glowColor} emissiveIntensity={0.5} />
+      </mesh>
+      <pointLight position={[0, 8, 0]} intensity={1.5} distance={28} color={glowColor} />
+      <group position={[0, 8, 0]}>
+        <LightShaft height={7} width={size * 1.3} color={glowColor} />
+      </group>
+    </group>
+  );
+}

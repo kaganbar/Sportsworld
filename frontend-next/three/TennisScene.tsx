@@ -22,7 +22,15 @@ const SERVICE_LINE_Z = 6.4; // distance from the net to the service line
 const LINE_WIDTH = 0.05;
 const NET_HEIGHT = 1.0; // real net dips from 1.07m at the posts to 0.914m center
 const BALL_RADIUS = 0.034; // ~6.7cm diameter
+// Cooler/whiter than football's floodlight GLOW — reads as bright daytime
+// broadcast lighting rather than a night stadium, matching the "Grand Slam"
+// elegance the redesign brief asks for.
 const GLOW = "#eef3ff";
+// A deep ivy/hedge green — the signature Wimbledon/Grand-Slam backdrop
+// color, replacing the generic slate stadium-wall tone every scene shared
+// before this, so tennis reads as its own refined venue rather than a
+// re-tinted stadium.
+const STAND_COLOR = "#0e3d28";
 
 // Each player holds a baseline "ready position" (three/formations.ts-style
 // slot) and eases toward a new target each rally exchange — replacing the
@@ -179,6 +187,7 @@ export default function TennisScene() {
         position={[-COURT_HALF_WIDTH - 2.2, 0.55, 0]}
         rotation={[0.25, Math.PI / 2, 0]}
         width={COURT_HALF_LENGTH * 2 + 6}
+        color={STAND_COLOR}
       />
       <Crowd
         position={[-COURT_HALF_WIDTH - 2.8, 1.25, 0]}
@@ -191,6 +200,7 @@ export default function TennisScene() {
         position={[COURT_HALF_WIDTH + 2.2, 0.55, 0]}
         rotation={[0.25, -Math.PI / 2, 0]}
         width={COURT_HALF_LENGTH * 2 + 6}
+        color={STAND_COLOR}
       />
       <Crowd
         position={[COURT_HALF_WIDTH + 2.8, 1.25, 0]}

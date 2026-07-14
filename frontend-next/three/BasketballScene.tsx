@@ -5,7 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import type { Mesh } from "three";
 import Player from "./Player";
 import Crowd from "./Crowd";
-import { Stand, FloodlightPole } from "./Stadium";
+import { Stand, ArenaRig } from "./Stadium";
 import { lerp3 } from "./orbitMath";
 import BallTrail from "./BallTrail";
 import { useActiveZone } from "@/lib/world-zone";
@@ -17,7 +17,15 @@ import Net from "./Net";
 
 const HOME_COLOR = "#ea580c";
 const AWAY_COLOR = "#1d4ed8";
-const GLOW = "#fff2e0";
+// Warmer/more saturated than football's crisp-white floodlight GLOW — an
+// indoor arena under bright halogen/LED rigs reads warmer and more amber
+// than an open-air stadium at night, and it echoes this scene's own
+// HOME_COLOR (orange) instead of a generic near-white.
+const GLOW = "#ffd9a3";
+// Indoor arena wall — a darker, warmer-neutral tone than football/tennis's
+// stand color (see Stand's own `color` prop), so basketball reads as an
+// enclosed arena bowl rather than the same stadium wall re-lit.
+const STAND_COLOR = "#332a24";
 
 // Real NBA court dimensions, 1 three.js unit = 1 meter. The court's long
 // axis (basket-to-basket) already ran along X before this pass — unlike
@@ -242,15 +250,15 @@ export default function BasketballScene() {
 
       {/* arena stands + crowd along both long sides — crowd rows sit above
           the stand's top edge (tiered seating), not behind/below it */}
-      <Stand position={[0, 0.55, -HALF_WIDTH - 2.5]} width={COURT_LENGTH + 6} />
+      <Stand position={[0, 0.55, -HALF_WIDTH - 2.5]} width={COURT_LENGTH + 6} color={STAND_COLOR} />
       <Crowd position={[0, 1.25, -HALF_WIDTH - 3]} accentColor={HOME_COLOR} rows={4} />
-      <Stand position={[0, 0.55, HALF_WIDTH + 2.5]} rotation={[0.25, Math.PI, 0]} width={COURT_LENGTH + 6} />
+      <Stand position={[0, 0.55, HALF_WIDTH + 2.5]} rotation={[0.25, Math.PI, 0]} width={COURT_LENGTH + 6} color={STAND_COLOR} />
       <Crowd position={[0, 1.25, HALF_WIDTH + 3]} rotation={[0, Math.PI, 0]} accentColor={AWAY_COLOR} rows={4} />
 
-      <FloodlightPole position={[-HALF_LENGTH - 3, 0, -HALF_WIDTH - 1.5]} glowColor={GLOW} />
-      <FloodlightPole position={[HALF_LENGTH + 3, 0, -HALF_WIDTH - 1.5]} glowColor={GLOW} />
-      <FloodlightPole position={[-HALF_LENGTH - 3, 0, HALF_WIDTH + 1.5]} glowColor={GLOW} />
-      <FloodlightPole position={[HALF_LENGTH + 3, 0, HALF_WIDTH + 1.5]} glowColor={GLOW} />
+      {/* Center-hung arena rig (see Stadium.tsx's ArenaRig) instead of
+          football's corner floodlight poles — real indoor arenas light the
+          court from above center court, not external poles. */}
+      <ArenaRig position={[0, 0, 0]} glowColor={GLOW} />
 
       {PLAYERS.map((p, i) => {
         const holder = shooterIndex === 1 ? 1 : 0;
