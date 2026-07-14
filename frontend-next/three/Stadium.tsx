@@ -1,5 +1,8 @@
 "use client";
 
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import type { Mesh } from "three";
 import LightShaft from "./LightShaft";
 
 // Shared, cheap stadium/arena building blocks — a tilted stand slab and a
@@ -13,11 +16,17 @@ export function Stand({
   rotation = [-0.25, 0, 0],
   width = 10,
   color = "#475569",
+  trimColor,
 }: {
   position: [number, number, number];
   rotation?: [number, number, number];
   width?: number;
   color?: string;
+  // Optional thin accent strip along the stand's top edge — opt-in (no
+  // trim when omitted, so football/basketball's Stand is pixel-identical
+  // to before), used by TennisScene for the Wimbledon-purple detailing
+  // real Grand Slam venues are known for, on top of the green backdrop.
+  trimColor?: string;
 }) {
   // Shorter than the original (2.2) so it reads as a perimeter wall rather
   // than a slab dominating the whole upper frame — the crowd tiers (a
@@ -28,6 +37,12 @@ export function Stand({
     <mesh position={position} rotation={rotation}>
       <boxGeometry args={[width, 1.6, 1.4]} />
       <meshStandardMaterial color={color} />
+      {trimColor && (
+        <mesh position={[0, 0.83, 0]}>
+          <boxGeometry args={[width, 0.12, 1.45]} />
+          <meshStandardMaterial color={trimColor} />
+        </mesh>
+      )}
     </mesh>
   );
 }
@@ -76,21 +91,44 @@ export function FloodlightPole({
 // emissive glow mesh + pointLight + LightShaft), just a different silhouette
 // and position so the two scenes read as genuinely different venues rather
 // than the same rig re-colored.
+// Base/peak emissive intensity for the rig's jumbotron-style pulse — kept
+// tight (0.5 ± 0.12) so it reads as "a screen is alive up there," not a
+// strobe; same "very subtle, never fight for attention" restraint Effects.tsx
+// documents for its own DoF tuning.
+const RIG_EMISSIVE_BASE = 0.5;
+const RIG_EMISSIVE_AMP = 0.12;
+const RIG_PULSE_SPEED = 0.6;
+
 export function ArenaRig({
   position = [0, 0, 0],
   glowColor = "#fff2e0",
   size = 3.6,
+  active = true,
 }: {
   position?: [number, number, number];
   glowColor?: string;
   size?: number;
+  // Gates the per-frame pulse update — same active-zone-only-update
+  // discipline as FootballScene/BasketballScene/TennisScene's own Ball
+  // components, since all 3 zones stay mounted simultaneously.
+  active?: boolean;
 }) {
+  const boardRef = useRef<Mesh>(null);
   const cables: [number, number][] = [
     [-size * 0.35, -size * 0.35],
     [size * 0.35, -size * 0.35],
     [-size * 0.35, size * 0.35],
     [size * 0.35, size * 0.35],
   ];
+
+  useFrame(({ clock }) => {
+    if (!active) return;
+    const material = boardRef.current?.material;
+    if (material && !Array.isArray(material) && "emissiveIntensity" in material) {
+      material.emissiveIntensity = RIG_EMISSIVE_BASE + Math.sin(clock.getElapsedTime() * RIG_PULSE_SPEED) * RIG_EMISSIVE_AMP;
+    }
+  });
+
   return (
     <group position={position}>
       {cables.map(([x, z], i) => (
@@ -99,9 +137,9 @@ export function ArenaRig({
           <meshStandardMaterial color="#1a1a1a" />
         </mesh>
       ))}
-      <mesh position={[0, 8, 0]}>
+      <mesh ref={boardRef} position={[0, 8, 0]}>
         <boxGeometry args={[size, 1.4, size]} />
-        <meshPhysicalMaterial color="#0f0f12" metalness={0.55} roughness={0.35} emissive={glowColor} emissiveIntensity={0.5} />
+        <meshPhysicalMaterial color="#0f0f12" metalness={0.55} roughness={0.35} emissive={glowColor} emissiveIntensity={RIG_EMISSIVE_BASE} />
       </mesh>
       <pointLight position={[0, 8, 0]} intensity={1.5} distance={28} color={glowColor} />
       <group position={[0, 8, 0]}>

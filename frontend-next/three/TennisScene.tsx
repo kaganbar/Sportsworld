@@ -31,6 +31,10 @@ const GLOW = "#eef3ff";
 // before this, so tennis reads as its own refined venue rather than a
 // re-tinted stadium.
 const STAND_COLOR = "#0e3d28";
+// A thin royal-purple trim strip along the stand's top edge — paired with
+// the green, this is the other half of the iconic Wimbledon/Grand-Slam
+// color scheme (see Stadium.tsx's Stand `trimColor` prop).
+const STAND_TRIM = "#5b2a86";
 
 // Each player holds a baseline "ready position" (three/formations.ts-style
 // slot) and eases toward a new target each rally exchange — replacing the
@@ -188,6 +192,7 @@ export default function TennisScene() {
         rotation={[0.25, Math.PI / 2, 0]}
         width={COURT_HALF_LENGTH * 2 + 6}
         color={STAND_COLOR}
+        trimColor={STAND_TRIM}
       />
       <Crowd
         position={[-COURT_HALF_WIDTH - 2.8, 1.25, 0]}
@@ -201,6 +206,7 @@ export default function TennisScene() {
         rotation={[0.25, -Math.PI / 2, 0]}
         width={COURT_HALF_LENGTH * 2 + 6}
         color={STAND_COLOR}
+        trimColor={STAND_TRIM}
       />
       <Crowd
         position={[COURT_HALF_WIDTH + 2.8, 1.25, 0]}

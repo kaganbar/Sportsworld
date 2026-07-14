@@ -258,7 +258,7 @@ export default function BasketballScene() {
       {/* Center-hung arena rig (see Stadium.tsx's ArenaRig) instead of
           football's corner floodlight poles — real indoor arenas light the
           court from above center court, not external poles. */}
-      <ArenaRig position={[0, 0, 0]} glowColor={GLOW} />
+      <ArenaRig position={[0, 0, 0]} glowColor={GLOW} active={active} />
 
       {PLAYERS.map((p, i) => {
         const holder = shooterIndex === 1 ? 1 : 0;
