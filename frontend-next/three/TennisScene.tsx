@@ -197,12 +197,15 @@ export default function TennisScene() {
         color={STAND_COLOR}
         trimColor={STAND_TRIM}
       />
+      {/* A reserved Grand-Slam crowd reads as mostly uniform, not scattered
+          team colors the way a football/basketball crowd does. */}
       <Crowd
         position={[-COURT_HALF_WIDTH - 2.8, 1.25, 0]}
         rotation={[0, Math.PI / 2, 0]}
         accentColor={PLAYER_2_COLOR}
         rows={4}
         seatsPerRow={20}
+        accentChance={0.08}
       />
       <Stand
         position={[COURT_HALF_WIDTH + 2.2, 0.55, 0]}
@@ -217,6 +220,7 @@ export default function TennisScene() {
         accentColor={PLAYER_1_COLOR}
         rows={4}
         seatsPerRow={20}
+        accentChance={0.08}
       />
 
       <FloodlightPole position={[-COURT_HALF_WIDTH - 3.5, 0, -COURT_HALF_LENGTH - 1.5]} glowColor={GLOW} />

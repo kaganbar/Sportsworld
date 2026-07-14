@@ -12,6 +12,13 @@ interface CrowdProps {
   rowRise?: number;
   baseColor?: string;
   accentColor: string;
+  // Share of seats rendered in accentColor (team-colored "cheering" seats)
+  // vs. the uniform baseColor — real crowd energy differs by sport, not
+  // just team color: a reserved Grand Slam crowd reads as mostly uniform,
+  // a basketball arena as louder/more scattered color. Defaults to the
+  // original hardcoded ratio (Math.random() > 0.82 == 18%) so football's
+  // crowd is unchanged.
+  accentChance?: number;
 }
 
 // A cheap, stylized stand-in for spectators: a grid of small instanced boxes
@@ -33,6 +40,7 @@ export default function Crowd({
   rowRise = 0.4,
   baseColor = "#1f2937",
   accentColor,
+  accentChance = 0.18,
 }: CrowdProps) {
   const seats = useMemo(() => {
     const items: { pos: [number, number, number]; heightScale: number; accent: boolean }[] = [];
@@ -44,12 +52,12 @@ export default function Crowd({
         items.push({
           pos: [x, y, z],
           heightScale: 0.6 + Math.random() * 0.5,
-          accent: Math.random() > 0.82,
+          accent: Math.random() < accentChance,
         });
       }
     }
     return items;
-  }, [rows, seatsPerRow, seatSpacing, rowRise]);
+  }, [rows, seatsPerRow, seatSpacing, rowRise, accentChance]);
 
   return (
     <group position={position} rotation={rotation}>

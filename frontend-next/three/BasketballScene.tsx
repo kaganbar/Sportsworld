@@ -251,9 +251,11 @@ export default function BasketballScene() {
       {/* arena stands + crowd along both long sides — crowd rows sit above
           the stand's top edge (tiered seating), not behind/below it */}
       <Stand position={[0, 0.55, -HALF_WIDTH - 2.5]} width={COURT_LENGTH + 6} color={STAND_COLOR} />
-      <Crowd position={[0, 1.25, -HALF_WIDTH - 3]} accentColor={HOME_COLOR} rows={4} />
+      {/* Louder/more scattered team color than football's default crowd —
+          an arena crowd's energy, not just its accent hex. */}
+      <Crowd position={[0, 1.25, -HALF_WIDTH - 3]} accentColor={HOME_COLOR} rows={4} accentChance={0.32} />
       <Stand position={[0, 0.55, HALF_WIDTH + 2.5]} rotation={[0.25, Math.PI, 0]} width={COURT_LENGTH + 6} color={STAND_COLOR} />
-      <Crowd position={[0, 1.25, HALF_WIDTH + 3]} rotation={[0, Math.PI, 0]} accentColor={AWAY_COLOR} rows={4} />
+      <Crowd position={[0, 1.25, HALF_WIDTH + 3]} rotation={[0, Math.PI, 0]} accentColor={AWAY_COLOR} rows={4} accentChance={0.32} />
 
       {/* Center-hung arena rig (see Stadium.tsx's ArenaRig) instead of
           football's corner floodlight poles — real indoor arenas light the
