@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
@@ -244,12 +244,23 @@ export class FootballAgentService {
   }
 
   async getOrCreateAnalysis(gameId: number, lang: Lang) {
+    // Sport must be checked before the cache read: MatchAnalysis is a single
+    // shared table keyed on (gameId, language) with no sport in the key, and
+    // football/basketball share the same Game table and id sequence — a
+    // basketball game's id hitting this endpoint would otherwise either
+    // return a basketball-flavored analysis straight from cache, or (on a
+    // cache miss) get "analyzed" as a football match. Mirrors
+    // BasketballAgentService's identical guard.
+    const game = await this.games.findGameOrThrow(gameId);
+    if (game.sport !== 'football') {
+      throw new NotFoundException(`Game ${gameId} is not a football game`);
+    }
+
     const existing = await this.prisma.matchAnalysis.findUnique({
       where: { gameId_language: { gameId, language: lang } },
     });
     if (existing) return existing;
 
-    const game = await this.games.findGameOrThrow(gameId);
     const baseContext = await this.buildMatchContext(game, lang);
 
     const enrichment = await this.enrichContext(

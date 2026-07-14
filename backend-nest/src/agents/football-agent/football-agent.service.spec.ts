@@ -40,6 +40,7 @@ function makeRedis(allowed: boolean): RedisService {
 
 const fakeGame = {
   id: 1,
+  sport: 'football',
   homeTeamId: 10,
   awayTeamId: 20,
   competition: 'Premier League',
@@ -212,5 +213,23 @@ describe('FootballAgentService enrichment (Phase A)', () => {
       probabilities: { option_a_win: 50, draw: 25, option_b_win: 25 },
       confidence: 'medium',
     });
+  });
+
+  it('throws NotFoundException for a game that is not football', async () => {
+    const deps = makeDeps();
+    (deps.games.findGameOrThrow as jest.Mock).mockResolvedValue({ ...fakeGame, sport: 'basketball' });
+    const service = new FootballAgentService(
+      deps.prisma,
+      deps.games,
+      deps.stats,
+      deps.translations,
+      deps.agentCaller,
+      makeConfig({}),
+      makeRedis(true),
+      deps.newsAgent,
+      deps.predictionAgent,
+    );
+
+    await expect(service.getOrCreateAnalysis(1, 'en')).rejects.toThrow('Game 1 is not a football game');
   });
 });

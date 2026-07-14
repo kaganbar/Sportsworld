@@ -157,6 +157,21 @@ export class PredictionAgentService {
 
   async getOrCreatePrediction(sport: PredictionSport, subjectId: number, lang: Lang) {
     const isTennis = sport === 'tennis';
+
+    // Game must be fetched and its sport checked before the cache read:
+    // PredictionAnalysis is cached keyed only on (gameId, language) with no
+    // sport in the key, football/basketball share the same Game table and
+    // id sequence, and `sport` here is arbitrary client input (the route
+    // param), not derived from the game itself — a mismatched sport paired
+    // with a gameId that already has a cached prediction would otherwise
+    // silently return that game's real-sport prediction mislabeled as the
+    // requested (wrong) sport, instead of 404ing. Mirrors the identical
+    // guard in FootballAgentService/BasketballAgentService.
+    const game = isTennis ? null : await this.games.findGameOrThrow(subjectId);
+    if (game && game.sport !== sport) {
+      throw new NotFoundException(`Game ${subjectId} is not a ${sport} game`);
+    }
+
     const existing = isTennis
       ? await this.prisma.predictionAnalysis.findUnique({
           where: { tennisMatchId_language: { tennisMatchId: subjectId, language: lang } },
@@ -168,7 +183,7 @@ export class PredictionAgentService {
 
     const context = isTennis
       ? await this.buildTennisContext(await this.findTennisMatchOrThrow(subjectId), lang)
-      : await this.buildGameContext(await this.games.findGameOrThrow(subjectId), lang);
+      : await this.buildGameContext(game, lang);
 
     this.logger.log(`Requesting prediction for ${sport} subject ${subjectId} (lang=${lang})`);
 

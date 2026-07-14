@@ -33,14 +33,27 @@ export class StatisticsAgentService {
     private readonly agentCaller: AgentCallerService,
   ) {}
 
-  private async buildTeamContext(sport: StatsSport, teamId: number, lang: Lang) {
-    const tr = (text: string) => this.translations.translate(text, lang);
-
+  /** Validates that `teamId` is really a `sport` team before anything else
+   * touches it. Must run before the StatisticsAnalysis cache read in
+   * getOrCreateStatistics: that cache is keyed only on (teamId, language)
+   * with no sport in the key, and football/basketball share the same Team
+   * table and id sequence — an out-of-band `sport` (this endpoint's `sport`
+   * route param is arbitrary client input, not derived from the team
+   * itself) paired with a teamId that already has a cached analysis would
+   * otherwise silently return that team's real-sport analysis mislabeled as
+   * the requested sport, instead of 400ing. */
+  private async findTeamOrThrow(sport: StatsSport, teamId: number) {
     const team = await this.prisma.team.findUnique({ where: { id: teamId } });
     if (!team) throw new NotFoundException(`Team ${teamId} not found`);
     if (team.sport !== sport) {
       throw new BadRequestException(`Team ${teamId} is not a ${sport} team`);
     }
+    return team;
+  }
+
+  private async buildTeamContext(team: { id: number; name: string }, sport: StatsSport, lang: Lang) {
+    const tr = (text: string) => this.translations.translate(text, lang);
+    const teamId = team.id;
 
     const [recent, formStats] = await Promise.all([
       this.stats.teamRecentResults(teamId),
@@ -115,6 +128,8 @@ export class StatisticsAgentService {
 
   async getOrCreateStatistics(sport: StatsSport, subjectId: number, lang: Lang) {
     const isTennis = sport === 'tennis';
+    const team = isTennis ? null : await this.findTeamOrThrow(sport, subjectId);
+
     const existing = isTennis
       ? await this.prisma.statisticsAnalysis.findUnique({
           where: { tennisPlayerId_language: { tennisPlayerId: subjectId, language: lang } },
@@ -126,7 +141,7 @@ export class StatisticsAgentService {
 
     const context = isTennis
       ? await this.buildPlayerContext(subjectId, lang)
-      : await this.buildTeamContext(sport, subjectId, lang);
+      : await this.buildTeamContext(team!, sport, lang);
 
     this.logger.log(`Requesting statistics analysis for ${sport} subject ${subjectId} (lang=${lang})`);
     const [analysis, modelLabel] = await this.agentCaller.call<StatisticsAnalysisOutput>({
