@@ -63,7 +63,7 @@ export default function TransfersPage() {
                   {rumour.source} · {timeAgo(rumour.reported_at, lang)}
                 </span>
                 {rumour.source_probability != null && (
-                  <Badge className="border-transparent bg-[var(--sport-accent)]/20 text-[var(--sport-accent)]">
+                  <Badge className="border-transparent bg-[var(--brand-accent)]/20 text-[var(--status-upcoming)]">
                     {rumour.source_probability}%
                   </Badge>
                 )}

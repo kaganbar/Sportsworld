@@ -32,8 +32,8 @@ export default function TennisPlayerProfilePage({ params }: { params: { id: stri
           position={t("positionSingles")}
           stats={[
             { label: t("playerWorldRank"), value: data.ranking ?? "-" },
-            { label: t("playerWinPct"), value: data.win_pct != null ? `${data.win_pct}%` : "-" },
-            { label: t("playerAcesPerMatch"), value: data.aces_per_match ?? "-" },
+            { label: t("playerWinPct"), value: data.win_pct != null ? `${data.win_pct.toFixed(1)}%` : "-" },
+            { label: t("playerAcesPerMatch"), value: data.aces_per_match != null ? data.aces_per_match.toFixed(1) : "-" },
           ]}
         />
       )}

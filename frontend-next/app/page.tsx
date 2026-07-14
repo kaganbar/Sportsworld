@@ -57,7 +57,7 @@ export default function Home() {
           const theme = sportsTheme[key];
           const mark = SPORT_MARK[key];
           const card = (
-            <div className="glass-panel h-full w-[300px] rounded-[26px] p-7 text-start transition duration-300 hover:-translate-y-1.5 sm:w-[340px]">
+            <div className="glass-panel h-full w-full max-w-[340px] rounded-[26px] p-7 text-start transition duration-300 hover:-translate-y-1.5">
               <div
                 className="mb-5 h-16 w-16 rounded-full"
                 style={{ background: mark.gradient, boxShadow: `0 0 30px ${mark.glow}` }}

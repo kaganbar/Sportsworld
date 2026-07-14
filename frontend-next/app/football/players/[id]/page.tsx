@@ -35,7 +35,7 @@ export default function FootballPlayerProfile({ params }: { params: { id: string
           stats={[
             { label: t("playerGoals"), value: stats.goals },
             { label: t("playerAssists"), value: stats.assists },
-            { label: t("playerRating"), value: stats.rating },
+            { label: t("playerRating"), value: stats.rating.toFixed(1) },
           ]}
         />
       )}

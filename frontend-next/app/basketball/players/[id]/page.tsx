@@ -33,9 +33,9 @@ export default function BasketballPlayerProfile({ params }: { params: { id: stri
           team={data.team.name}
           position={data.position}
           stats={[
-            { label: t("playerPpg"), value: stats.ppg },
-            { label: t("playerRpg"), value: stats.rpg },
-            { label: t("playerApg"), value: stats.apg },
+            { label: t("playerPpg"), value: stats.ppg.toFixed(1) },
+            { label: t("playerRpg"), value: stats.rpg.toFixed(1) },
+            { label: t("playerApg"), value: stats.apg.toFixed(1) },
           ]}
         />
       )}
