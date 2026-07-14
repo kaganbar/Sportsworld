@@ -183,12 +183,15 @@ interface PlayerProps {
   target?: TargetPath;
 }
 
-// xbot.glb bakes in two gesture clips ("agree", "headShake") this project
-// never used — every player just sat perfectly still in "idle". Playing
-// them occasionally is a zero-asset way to break up an otherwise frozen
-// loop (see the plan's Context section: no real physics/mocap idle variety
-// is achievable here, but using clips that already exist in the file is).
-const IDLE_GESTURES = ["agree", "headShake"] as const;
+// xbot.glb bakes in four gesture/pose clips ("agree", "headShake",
+// "sad_pose", "sneak_pose") this project only used two of — confirmed by
+// parsing the glb's own JSON chunk directly (its `animations` array lists
+// all four by name), not guessed. Playing them occasionally is a zero-asset
+// way to break up an otherwise frozen idle loop (see the plan's Context
+// section: no real physics/mocap idle variety is achievable here, but using
+// clips that already exist in the file is) — more variants means less
+// chance of two nearby idle players visibly syncing on the same gesture.
+const IDLE_GESTURES = ["agree", "headShake", "sad_pose", "sneak_pose"] as const;
 
 export default function Player({
   color,
@@ -286,11 +289,12 @@ export default function Player({
     // action is actually playing (idle, or run/walk if settled mid-target-
     // mode), not hardcoded to "idle".
     const baseAction = actions[animation] ?? customActions.current[animation];
-    if ((animation === "idle" || settled) && baseAction && actions.agree && actions.headShake) {
+    if ((animation === "idle" || settled) && baseAction && IDLE_GESTURES.every((g) => actions[g])) {
       const g = gestureRef.current;
       const t = clock.getElapsedTime();
       if (g.phase === "idle" && t > g.nextAt) {
-        const name = seededRandom(t + seedRef.current) > 0.5 ? "agree" : "headShake";
+        const idx = Math.floor(seededRandom(t + seedRef.current) * IDLE_GESTURES.length);
+        const name = IDLE_GESTURES[idx];
         const gesture = actions[name]!;
         gesture.reset();
         gesture.setLoop(THREE.LoopOnce, 1);
