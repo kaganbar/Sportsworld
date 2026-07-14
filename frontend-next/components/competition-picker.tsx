@@ -44,11 +44,14 @@ export default function CompetitionPicker({ sport, basePath }: { sport: ApiSport
                 style={accent ? { borderColor: accent, boxShadow: `0 0 0 1px ${accent}33` } : undefined}
                 variant="glass"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-accent)]" />
                 {/* line-clamp-2 + break-words: a long (esp. Hebrew) competition
                     name must wrap and clip gracefully within the fixed-height
                     tile, never overflow it. */}
                 <span className="line-clamp-2 break-words text-[15px] font-bold leading-snug text-white">{c.name}</span>
+                <span className="flex items-center gap-2 text-xs text-white/50">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-accent)]" />
+                  {c.match_count} {t("matches")}
+                </span>
               </Card>
             </Link>
           );

@@ -72,14 +72,45 @@ export class CompetitionsService {
     return [...new Set(rows.map((r) => r.competitionId))];
   }
 
+  /**
+   * Today's (+tomorrow, same 2-day window as GamesService.gamesToday /
+   * TennisService.matchesToday, so the count a competition tile shows
+   * matches exactly what its Live/Upcoming tabs would list) match count per
+   * competition — the design brief's "N matches" competition-tile stat.
+   * Grouped counts, not per-competition queries: one query regardless of
+   * how many competitions a sport has.
+   */
+  private async matchCountsForSport(sportKey: SportKey): Promise<Map<number, number>> {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 2);
+
+    const rows =
+      sportKey === 'tennis'
+        ? await this.prisma.tennisMatch.groupBy({
+            by: ['competitionId'],
+            where: { startTime: { gte: start, lt: end }, competitionId: { not: null } },
+            _count: { _all: true },
+          })
+        : await this.prisma.game.groupBy({
+            by: ['competitionId'],
+            where: { sport: sportKey, kickoff: { gte: start, lt: end }, competitionId: { not: null } },
+            _count: { _all: true },
+          });
+
+    return new Map(rows.filter((r) => r.competitionId != null).map((r) => [r.competitionId as number, r._count._all]));
+  }
+
   async listForSport(sportKey: SportKey, lang: Lang) {
-    const competitions = await this.prisma.competition.findMany({
-      where: { sportKey },
-      orderBy: { tier: 'asc' },
-    });
+    const [competitions, counts] = await Promise.all([
+      this.prisma.competition.findMany({ where: { sportKey }, orderBy: { tier: 'asc' } }),
+      this.matchCountsForSport(sportKey),
+    ]);
     return competitions.map((c) => ({
       slug: c.slug,
       name: lang === 'he' ? c.nameHe : c.name,
+      match_count: counts.get(c.id) ?? 0,
     }));
   }
 

@@ -276,6 +276,7 @@ export const fetchTransfers = (limit = 30, sport?: SportKey, competition?: strin
 export interface Competition {
   slug: string;
   name: string;
+  match_count: number;
 }
 
 export const fetchCompetitions = (sport: SportKey, lang: Lang = "en") =>

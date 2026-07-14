@@ -18,7 +18,7 @@ export default function KeyPlayerCard({
   position: string;
   href: string;
 }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   return (
     <Link
       href={href}
@@ -32,7 +32,9 @@ export default function KeyPlayerCard({
           {team} · {position}
         </div>
       </div>
-      <div className="shrink-0 text-xl text-[var(--status-upcoming)]">›</div>
+      {/* The "points toward more content" chevron flips with reading
+          direction — same reasoning as BreadcrumbBar's arrow. */}
+      <div className="shrink-0 text-xl text-[var(--status-upcoming)]">{lang === "he" ? "‹" : "›"}</div>
     </Link>
   );
 }
