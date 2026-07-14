@@ -34,8 +34,5 @@ export const BASKETBALL_SLOTS: Slot[] = [
 ];
 export const BASKETBALL_SHIFT_PER_SLOT = 3.2;
 
-// Tennis already anchors each player to their own baseline half — no
-// zone-reactive shift needed (a baseline player doesn't advance into the
-// net between rally shots), just the same momentum-based easing instead
-// of the old pure sine-wave sway.
-export const TENNIS_SLOTS: Slot[] = [];
+// Tennis already anchors each player to their own baseline half (see
+// TennisScene's own PLAYER_BASE_Z) — no formation-slot table needed here.

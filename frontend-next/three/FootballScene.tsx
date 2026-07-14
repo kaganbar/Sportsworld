@@ -53,7 +53,8 @@ const SEGMENT_DURATION = 2.2; // seconds per pass between two players
 const REACTION_DELAY_MIN = 0.15;
 const REACTION_DELAY_MAX = 0.4;
 
-const GOALKEEPER_BASE: [number, number, number] = [0, 0, -HALF_LENGTH + 1.5];
+const GOALKEEPER_BASE_NEAR: [number, number, number] = [0, 0, -HALF_LENGTH + 1.5];
+const GOALKEEPER_BASE_FAR: [number, number, number] = [0, 0, HALF_LENGTH - 1.5];
 const DIVE_CYCLE = 5; // seconds between dives
 const DIVE_DURATION = 0.95; // matches the dive AnimationClip's own duration (Player.tsx)
 
@@ -205,13 +206,28 @@ function Ball({ active, onKicker }: { active: boolean; onKicker: (i: number) => 
   );
 }
 
-function Goalkeeper({ active }: { active: boolean }) {
+// Two goals, two keepers — a single hardcoded instance previously only
+// guarded the near goal (z=-HALF_LENGTH), leaving the far one completely
+// undefended. Same component, just parameterized by which end/color it
+// guards, plus a `phaseOffset` so the two don't dive/sway in perfect
+// mirrored sync (each still reads as reacting independently).
+function Goalkeeper({
+  active,
+  color,
+  base,
+  phaseOffset = 0,
+}: {
+  active: boolean;
+  color: string;
+  base: [number, number, number];
+  phaseOffset?: number;
+}) {
   const [diving, setDiving] = useState(false);
   const lastPhase = useRef(false);
 
   useFrame(({ clock }) => {
     if (!active) return;
-    const phase = (clock.getElapsedTime() % DIVE_CYCLE) < DIVE_DURATION;
+    const phase = ((clock.getElapsedTime() + phaseOffset) % DIVE_CYCLE) < DIVE_DURATION;
     if (phase !== lastPhase.current) {
       lastPhase.current = phase;
       setDiving(phase);
@@ -220,9 +236,9 @@ function Goalkeeper({ active }: { active: boolean }) {
 
   return (
     <Player
-      color={AWAY_COLOR}
+      color={color}
       animation={diving ? "dive" : "idle"}
-      sway={{ base: GOALKEEPER_BASE, axis: "x", amplitude: GOAL_WIDTH / 2 - 0.5, speed: 0.5, offset: 0, facingY: 0 }}
+      sway={{ base, axis: "x", amplitude: GOAL_WIDTH / 2 - 0.5, speed: 0.5, offset: phaseOffset, facingY: 0 }}
     />
   );
 }
@@ -279,7 +295,8 @@ export default function FootballScene() {
           />
         );
       })}
-      <Goalkeeper active={active} />
+      <Goalkeeper active={active} color={AWAY_COLOR} base={GOALKEEPER_BASE_NEAR} />
+      <Goalkeeper active={active} color={HOME_COLOR} base={GOALKEEPER_BASE_FAR} phaseOffset={2.3} />
 
       <Ball active={active} onKicker={setKickerIndex} />
     </>
