@@ -1,5 +1,7 @@
 "use client";
 
+import LightShaft from "./LightShaft";
+
 // Shared, cheap stadium/arena building blocks — a tilted stand slab and a
 // floodlight pole with a soft glow — reused across all three scenes so
 // "inside a stadium" reads consistently without duplicating geometry per
@@ -40,14 +42,27 @@ export function FloodlightPole({
   return (
     <group position={position}>
       <mesh position={[0, 3, 0]}>
+        {/* MeshPhysicalMaterial + anisotropy: a brushed-metal reflection
+            response (streaked highlights that shift with viewing angle)
+            instead of MeshStandardMaterial's uniform, plastic-looking
+            specular — the same "real fidelity step up, zero new assets"
+            move as the pitch/court clearcoat swaps in FootballScene/
+            BasketballScene. */}
         <cylinderGeometry args={[0.06, 0.08, 6, 8]} />
-        <meshStandardMaterial color="#2d2d2d" />
+        <meshPhysicalMaterial color="#2d2d2d" metalness={0.8} roughness={0.35} anisotropy={0.6} />
       </mesh>
       <mesh position={[0, 6, 0]}>
-        <boxGeometry args={[1.1, 0.5, 0.3]} />
-        <meshStandardMaterial color="#f5f5f4" emissive={glowColor} emissiveIntensity={0.7} />
+        {/* Boosted emissive (0.7 -> 1.8) — under ACESFilmicToneMapping
+            (see PersistentWorldCanvas.tsx) this reads as a genuine bright
+            highlight with a soft rolloff instead of a flat lit panel, the
+            "glow" effect this project settled on instead of a bloom
+            post-process pass (see Effects.tsx for why bloom was skipped). */}
+        <meshStandardMaterial color="#f5f5f4" emissive={glowColor} emissiveIntensity={1.8} />
       </mesh>
       <pointLight position={[0, 6, 0]} intensity={1.1} distance={22} color={glowColor} />
+      <group position={[0, 6, 0]}>
+        <LightShaft height={5.5} color={glowColor} />
+      </group>
     </group>
   );
 }

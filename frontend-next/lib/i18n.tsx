@@ -25,11 +25,8 @@ const translations = {
     loadingFixtures: "Loading fixtures...",
     noGames: "No games scheduled today.",
     loadErrorGames: "Couldn't load games",
-    backToGames: "← Today's games",
     loadingMatch: "Loading match...",
     loadErrorGame: "Couldn't load game",
-    aiAnalysis: "🤖 AI Match Analysis",
-    analyzing: "The AI Agent is analyzing this match…",
     liveNow: "Live now",
     quarters: "Quarter by Quarter",
     form5: "Form (last 5)",
@@ -90,6 +87,50 @@ const translations = {
     noRankingsData: "No ranking data yet.",
     noUpcomingGames: "No upcoming games.",
     noLiveGames: "Nothing live right now.",
+    // Redesign brief additions —
+    heroKicker: "PREMIUM SPORTS PLATFORM",
+    heroTitle: "The Future of Sport, Live.",
+    heroSubtitle: "Enter a world-class cinematic sports experience across football, basketball and tennis.",
+    tagline_football: "Stadiums. Goals. Glory.",
+    tagline_basketball: "Courts. Dunks. Drama.",
+    tagline_tennis: "Courts. Rallies. Precision.",
+    back: "‹ Back",
+    tab_overview: "Overview",
+    keyPlayer: "Key Player",
+    aiInsightTitle: "AI Match Insight",
+    predictionConfidence: "Prediction confidence",
+    playerPhoto: "PLAYER PHOTO",
+    language: "Language",
+    appearance: "Appearance",
+    cinematic: "Cinematic",
+    focus: "Focus",
+    notifications: "Match Notifications",
+    notificationsHint: "Get alerts for live goals and score changes.",
+    stat_possession: "Possession",
+    stat_shots: "Shots",
+    stat_shotsOnTarget: "Shots on Target",
+    stat_corners: "Corners",
+    stat_points: "Points",
+    stat_rebounds: "Rebounds",
+    stat_assists: "Assists",
+    stat_fgPct: "FG%",
+    stat_aces: "Aces",
+    stat_winners: "Winners",
+    stat_unforcedErrors: "Unforced Errors",
+    stat_doubleFaults: "Double Faults",
+    playerGoals: "Goals",
+    playerAssists: "Assists",
+    playerRating: "Rating",
+    playerPpg: "PPG",
+    playerRpg: "RPG",
+    playerApg: "APG",
+    playerWorldRank: "World Rank",
+    playerWinPct: "Win %",
+    playerAcesPerMatch: "Aces/Match",
+    statusFinished: "Full Time",
+    tourAtp: "ATP Tour",
+    tourWta: "WTA Tour",
+    positionSingles: "Singles",
   },
   he: {
     tagline: "בוחרים ענף ספורט, מקבלים את משחקי היום וניתוח AI לכל משחק.",
@@ -105,11 +146,8 @@ const translations = {
     loadingFixtures: "טוען משחקים...",
     noGames: "אין משחקים מתוכננים היום.",
     loadErrorGames: "לא ניתן לטעון את המשחקים",
-    backToGames: "→ משחקי היום",
     loadingMatch: "טוען משחק...",
     loadErrorGame: "לא ניתן לטעון את המשחק",
-    aiAnalysis: "🤖 ניתוח AI למשחק",
-    analyzing: "סוכן ה-AI מנתח את המשחק…",
     liveNow: "בשידור חי",
     quarters: "רבעים",
     form5: "כושר (5 אחרונים)",
@@ -169,6 +207,50 @@ const translations = {
     noRankingsData: "אין עדיין נתוני דירוג.",
     noUpcomingGames: "אין משחקים קרובים.",
     noLiveGames: "אין כרגע שידורים חיים.",
+    // Redesign brief additions —
+    heroKicker: "פלטפורמת ספורט פרימיום",
+    heroTitle: "עתיד הספורט, בשידור חי.",
+    heroSubtitle: "היכנסו לחוויית ספורט קולנועית ברמה עולמית — כדורגל, כדורסל וטניס.",
+    tagline_football: "אצטדיונים. שערים. תהילה.",
+    tagline_basketball: "מגרשים. סלאמים. דרמה.",
+    tagline_tennis: "מגרשים. חילופים. דיוק.",
+    back: "חזרה ›",
+    tab_overview: "סקירה",
+    keyPlayer: "שחקן מפתח",
+    aiInsightTitle: "תובנת AI למשחק",
+    predictionConfidence: "רמת ביטחון בחיזוי",
+    playerPhoto: "תמונת שחקן",
+    language: "שפה",
+    appearance: "מראה",
+    cinematic: "קולנועי",
+    focus: "פוקוס",
+    notifications: "התראות משחק",
+    notificationsHint: "קבלו התראות על שערים ושינויי תוצאה בזמן אמת.",
+    stat_possession: "נתח בעלות",
+    stat_shots: "בעיטות",
+    stat_shotsOnTarget: "בעיטות למסגרת",
+    stat_corners: "קרנות",
+    stat_points: "נקודות",
+    stat_rebounds: "ריבאונדים",
+    stat_assists: "אסיסטים",
+    stat_fgPct: "אחוז קליעה",
+    stat_aces: "אייסים",
+    stat_winners: "זכיות",
+    stat_unforcedErrors: "טעויות לא כפויות",
+    stat_doubleFaults: "כפולות טעות",
+    playerGoals: "שערים",
+    playerAssists: "בישולים",
+    playerRating: "דירוג",
+    playerPpg: "ממוצע נק'",
+    playerRpg: "ריבאונדים",
+    playerApg: "אסיסטים",
+    playerWorldRank: "דירוג עולמי",
+    playerWinPct: "אחוז ניצחונות",
+    playerAcesPerMatch: "אייסים/משחק",
+    statusFinished: "סיום",
+    tourAtp: "טור ATP",
+    tourWta: "טור WTA",
+    positionSingles: "יחידים",
   },
 } as const;
 
@@ -222,15 +304,36 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
 export const useLang = () => useContext(LangContext);
 
+// Segmented two-option pill (EN / עב), active option filled with the brand
+// accent gradient — matches the design brief's language toggle exactly,
+// replacing the old single-button "switch to the other language" control.
 export function LangToggle() {
   const { lang, setLang } = useLang();
+  const options: { key: Lang; label: string }[] = [
+    { key: "en", label: "EN" },
+    { key: "he", label: "עב" },
+  ];
   return (
-    <button
-      className="rounded-full bg-white/10 px-3 py-1 text-sm text-white transition hover:bg-white/20"
-      onClick={() => setLang(lang === "en" ? "he" : "en")}
-      aria-label="Switch language"
-    >
-      {lang === "en" ? "עברית" : "English"}
-    </button>
+    <div className="inline-flex gap-0.5 rounded-full border border-white/10 bg-white/5 p-0.5">
+      {options.map((opt) => {
+        const active = lang === opt.key;
+        return (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => setLang(opt.key)}
+            aria-label={`Switch to ${opt.label}`}
+            aria-pressed={active}
+            className={
+              active
+                ? "rounded-full bg-[linear-gradient(135deg,var(--brand-accent),var(--brand-accent-2))] px-3 py-1 text-xs font-bold text-[#06121c]"
+                : "rounded-full px-3 py-1 text-xs font-semibold text-white/60 transition hover:text-white"
+            }
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

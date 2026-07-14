@@ -15,4 +15,9 @@ export class TennisController {
   async detail(@Param('id', ParseIntPipe) id: number, @LangParam() lang: Lang) {
     return this.tennis.matchDetail(id, lang);
   }
+
+  @Get('players/:id')
+  async player(@Param('id', ParseIntPipe) id: number, @LangParam() lang: Lang) {
+    return this.tennis.playerDetail(id, lang);
+  }
 }

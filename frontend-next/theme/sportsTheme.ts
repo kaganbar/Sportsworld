@@ -1,5 +1,14 @@
 // Per-sport theme registry. Adding a sport = adding an entry here;
 // components only consume the CSS variables set by ThemeLayout.
+//
+// `glow` used to double as both the ambient-background tint AND the
+// interactive-chrome accent (buttons/active tabs). The redesign brief splits
+// these: interactive chrome now always uses the fixed --brand-accent (sky
+// blue, see globals.css), while `glow`/`accent` here are ambient-only —
+// background gradients, blob tint, glass-panel sheen, card hover-glow.
+// `glowRgb` is the brief's exact wayfinding palette (used by
+// components/ambient-glow.tsx, which needs raw r,g,b to build its own
+// radial-gradient alpha stops rather than a fixed-alpha hex).
 export const sportsTheme = {
   football: {
     label: "Football",
@@ -19,6 +28,7 @@ export const sportsTheme = {
     background:
       "radial-gradient(circle at 50% 15%, rgba(255,255,255,0.1), transparent 60%), radial-gradient(ellipse at 50% 100%, rgba(5,5,15,0.55), transparent 60%), repeating-linear-gradient(90deg, #14601f 0px, #14601f 90px, #187226 90px, #187226 180px)",
     glow: "#4ade80",
+    glowRgb: "52,211,153",
     available: true,
   },
   basketball: {
@@ -33,6 +43,7 @@ export const sportsTheme = {
     background:
       "radial-gradient(circle at 50% 15%, rgba(255,255,255,0.1), transparent 55%), linear-gradient(160deg, #241710, #c2410c)",
     glow: "#fb923c",
+    glowRgb: "251,146,60",
     available: true,
   },
   tennis: {
@@ -43,11 +54,24 @@ export const sportsTheme = {
     background:
       "radial-gradient(circle at 50% 15%, rgba(255,255,255,0.1), transparent 55%), linear-gradient(160deg, #1e3a8a, #1d4ed8)",
     glow: "#60a5fa",
+    glowRgb: "45,212,191",
     available: true,
   },
 } as const;
 
 export type SportKey = keyof typeof sportsTheme;
+
+// Neutral/home ambient tint (blue + violet), used by components/ambient-glow.tsx
+// when useActiveZone() reports "home" (no sport selected) — matches the
+// brief's "Neutral (home, no sport selected)" wayfinding spec exactly.
+export const neutralGlow = { primaryRgb: "56,189,248", secondaryRgb: "124,92,255" } as const;
+
+// Fixed status colors (live/upcoming/finished) — brief §"Live status".
+export const statusColor = {
+  live: "#f87171",
+  upcoming: "#8fd7ff",
+  finished: "#8b94a3",
+} as const;
 
 // "Other Sports" sub-menu — navigation scaffolding only for now (no backend
 // models/agents yet), same shape/pattern as sportsTheme so building these out

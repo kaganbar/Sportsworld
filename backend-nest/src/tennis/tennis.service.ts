@@ -66,10 +66,13 @@ export class TennisService {
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
+    // A 2-day window (today + tomorrow), not just today — same reasoning
+    // as GamesService.gamesToday: the "Upcoming" tab otherwise goes empty
+    // for any tournament with no more matches later today.
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
-    end.setDate(end.getDate() + 1);
+    end.setDate(end.getDate() + 2);
 
     let competitionId: number | undefined;
     if (competition) {
@@ -109,11 +112,30 @@ export class TennisService {
       match: await this.matchListDto(match, lang),
       sets: sets.map((s) => ({ set_number: s.setNumber, player1_games: s.player1Games, player2_games: s.player2Games })),
       stats: { player1: p1Stats, player2: p2Stats },
+      // Raw per-match stat breakdown (aces/winners/unforcedErrors/
+      // doubleFaults) for the match-detail Overview tab — a different key
+      // than `stats` above (which is recent-form W/L), same pattern as
+      // GamesService.gameDetail's `game_stats`. Null when not populated.
+      match_stats: match.stats ?? null,
       recent_form: {
         player1: await Promise.all(p1Recent.map((m) => this.matchResultDto(m, lang))),
         player2: await Promise.all(p2Recent.map((m) => this.matchResultDto(m, lang))),
       },
       head_to_head: await Promise.all(h2h.map((m) => this.matchResultDto(m, lang))),
+    };
+  }
+
+  async playerDetail(id: number, lang: Lang) {
+    const player = await this.prisma.tennisPlayer.findUnique({ where: { id } });
+    if (!player) throw new NotFoundException(`Tennis player ${id} not found`);
+    return {
+      id: player.id,
+      name: await this.translations.translate(player.name, lang),
+      country: player.country,
+      tour: player.tour,
+      ranking: player.ranking,
+      win_pct: player.winPct,
+      aces_per_match: player.acesPerMatch,
     };
   }
 }

@@ -112,6 +112,12 @@ model Player {
   name        String
   position    String
   shirtNumber Int
+  // Season-stat chips for the player profile screen. Shape depends on
+  // team.sport: football -> {goals, assists, rating}, basketball ->
+  // {ppg, rpg, apg}. JSON (not dedicated columns) since the two sports need
+  // different fields and Player is shared across both — see games app
+  // split note at the top of this file.
+  seasonStats Json?
 
   injuries Injury[]
   lineups  Lineup[]
@@ -133,6 +139,11 @@ model Game {
   homeScore      Int?
   awayScore      Int?
   minute         Int? // football's live clock only
+  // Per-game team stat breakdown for the match-detail Overview tab's
+  // proportion bars, e.g. football {home:{possession,shots,shotsOnTarget,
+  // corners}, away:{...}}. Nullable/JSON: only a subset of seeded/scraped
+  // games carry it, and the 4-field shape differs per sport.
+  stats          Json?
   // Resolved from the raw `competition` string at ingest time (see
   // CompetitionsService.resolveCompetition) — nullable so pre-migration
   // rows and not-yet-backfilled data still work; the raw string column
@@ -208,11 +219,15 @@ model QuarterScore {
 }
 
 model TennisPlayer {
-  id      Int    @id @default(autoincrement())
-  name    String @unique
-  country String
-  tour    Tour
-  ranking Int?
+  id            Int    @id @default(autoincrement())
+  name          String @unique
+  country       String
+  tour          Tour
+  ranking       Int?
+  // Season-stat chips for the player profile screen (World Rank comes from
+  // `ranking` above; these two cover Win % / Aces per match).
+  winPct        Float?
+  acesPerMatch  Float?
 
   matchesAsP1        TennisMatch[]        @relation("P1")
   matchesAsP2        TennisMatch[]        @relation("P2")
@@ -236,6 +251,9 @@ model TennisMatch {
   winnerId       Int?
   competitionRef Competition?  @relation(fields: [competitionId], references: [id], onDelete: SetNull)
   competitionId  Int?
+  // Match-detail Overview tab stat rows: {home:{aces,winners,unforcedErrors,
+  // doubleFaults}, away:{...}}. Same nullable/JSON pattern as Game.stats.
+  stats          Json?
 
   sets        TennisSet[]
   analyses    MatchAnalysis[]

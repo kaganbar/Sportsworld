@@ -1,85 +1,153 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useMemo, useRef, useState } from "react";
+import { useFrame } from "@react-three/fiber";
 import type { Mesh } from "three";
 import Player from "./Player";
 import Crowd from "./Crowd";
 import { Stand, FloodlightPole } from "./Stadium";
-import { swayPosition, lerp3 } from "./orbitMath";
-import GalaxyBackdrop from "./GalaxyBackdrop";
+import { lerp3 } from "./orbitMath";
+import BallTrail from "./BallTrail";
+import { useActiveZone } from "@/lib/world-zone";
+import { buildMarkingsGeometry, LineSpec } from "./markings";
+import { seededRandom } from "./rng";
+import { bouncedFlightHeight } from "./ballPhysics";
 
 const PLAYER_1_COLOR = "#ffffff";
 const PLAYER_2_COLOR = "#1e40af";
-const COURT_HALF_LENGTH = 7;
-const COURT_HALF_WIDTH = 3.5;
+// Real ITF singles court, 1 three.js unit = 1 meter.
+const COURT_HALF_LENGTH = 11.885; // 23.77m baseline-to-baseline
+const COURT_HALF_WIDTH = 4.115; // 8.23m sideline-to-sideline
+const SERVICE_LINE_Z = 6.4; // distance from the net to the service line
+const LINE_WIDTH = 0.05;
+const NET_HEIGHT = 1.0; // real net dips from 1.07m at the posts to 0.914m center
+const BALL_RADIUS = 0.034; // ~6.7cm diameter
 const GLOW = "#eef3ff";
 
-const PLAYERS = [
-  { base: [0, 0, -COURT_HALF_LENGTH + 1.2] as [number, number, number], axis: "x" as const, amplitude: 1.6, speed: 0.5, offset: 0 },
-  { base: [0, 0, COURT_HALF_LENGTH - 1.2] as [number, number, number], axis: "x" as const, amplitude: 1.6, speed: 0.5, offset: Math.PI },
-];
+// Each player holds a baseline "ready position" (three/formations.ts-style
+// slot) and eases toward a new target each rally exchange — replacing the
+// old continuous sine-wave sway, which never truly settled or reacted, with
+// discrete move-hit-recover positioning (the real shape of a tennis rally):
+// the receiver moves toward where the shot is aimed, the hitter recovers
+// back toward the center of their baseline.
+const PLAYER_BASE_Z = [-COURT_HALF_LENGTH + 1.5, COURT_HALF_LENGTH - 1.5];
+const FACING_Y = [0, Math.PI];
+const COVERAGE = 2.6; // meters either side of center a receiver moves to cover
 const RALLY_SEGMENT = 1.5; // seconds per shot exchange
-const RALLY_ARC = 1.3;
+const CONTACT_HEIGHT = 1.0; // where a racket meets the ball, roughly hip/chest height
+const REACTION_DELAY_MIN = 0.15;
+const REACTION_DELAY_MAX = 0.4;
 
-// Subtle camera drift — a background element, not the focus, so the
-// amplitude stays small. Replaces the fully static camera from
-// SportBackgroundCanvas's fixed position prop.
-function CameraDrift() {
-  const { camera } = useThree();
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    camera.position.x = Math.sin(t * 0.06) * 1.2;
-    camera.position.y = 6 + Math.sin(t * 0.05) * 0.3;
-    camera.lookAt(0, 0, 0);
-  });
-  return null;
+// Real ITF singles court markings: baselines, sidelines, service lines
+// (6.4m from the net) and the center service line splitting each service
+// box — the current court only had a boundary rectangle before this pass.
+// Merged into one BufferGeometry (three/markings.ts) instead of separate
+// meshes, same fix that took football's markings from ~30fps to 60fps.
+function CourtMarkings() {
+  const geometry = useMemo(() => {
+    const y = -0.49;
+    const lines: LineSpec[] = [
+      { position: [0, y, -COURT_HALF_LENGTH], size: [COURT_HALF_WIDTH * 2, LINE_WIDTH] },
+      { position: [0, y, COURT_HALF_LENGTH], size: [COURT_HALF_WIDTH * 2, LINE_WIDTH] },
+      { position: [-COURT_HALF_WIDTH, y, 0], size: [LINE_WIDTH, COURT_HALF_LENGTH * 2] },
+      { position: [COURT_HALF_WIDTH, y, 0], size: [LINE_WIDTH, COURT_HALF_LENGTH * 2] },
+      { position: [0, y, -SERVICE_LINE_Z], size: [COURT_HALF_WIDTH * 2, LINE_WIDTH] },
+      { position: [0, y, SERVICE_LINE_Z], size: [COURT_HALF_WIDTH * 2, LINE_WIDTH] },
+      { position: [0, y, -SERVICE_LINE_Z / 2], size: [LINE_WIDTH, SERVICE_LINE_Z] },
+      { position: [0, y, SERVICE_LINE_Z / 2], size: [LINE_WIDTH, SERVICE_LINE_Z] },
+    ];
+    return buildMarkingsGeometry(lines);
+  }, []);
+
+  return (
+    <mesh geometry={geometry}>
+      <meshBasicMaterial color="#ffffff" />
+    </mesh>
+  );
 }
 
-// Ball alternates toward each player's current sway position (a rally)
+// Ball travels between each player's current target position (a rally)
 // instead of an independent sine wave, triggering "swing" on whichever
-// player is about to hit it back at the start of each exchange.
-function Ball({ onSwinger }: { onSwinger: (i: number) => void }) {
+// player is about to hit it back at the start of each exchange (delayed by
+// a seeded human reaction time, same as football/basketball). `active`
+// gates recompute/state updates when this zone isn't docked — see
+// FootballScene's Ball for the same pattern and rationale.
+function Ball({
+  active,
+  onSwinger,
+}: {
+  active: boolean;
+  onSwinger: (swinger: number, targets: [number, number]) => void;
+}) {
   const ref = useRef<Mesh>(null);
   const lastSegment = useRef(-1);
+  const trailRef = useRef<[number, number, number][]>([]);
+  const targetsRef = useRef<[number, number]>([0, 0]);
+  const pendingSwinger = useRef<number | null>(null);
+  const pendingAt = useRef(0);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
+    if (!active) return;
     const elapsed = clock.getElapsedTime();
     const segment = Math.floor(elapsed / RALLY_SEGMENT);
     const from = segment % 2;
     const to = (segment + 1) % 2;
     if (segment !== lastSegment.current) {
       lastSegment.current = segment;
-      onSwinger(from);
+      // The receiver moves to cover where the shot is aimed; the hitter
+      // (who just struck it) recovers back toward the center of their
+      // baseline — the real shape of a rally, not a perpetual sine sweep.
+      targetsRef.current = [0, 0];
+      targetsRef.current[to] = (seededRandom(segment) - 0.5) * 2 * COVERAGE;
+      pendingSwinger.current = from;
+      pendingAt.current = elapsed + REACTION_DELAY_MIN + seededRandom(elapsed) * (REACTION_DELAY_MAX - REACTION_DELAY_MIN);
+    }
+    if (pendingSwinger.current !== null && elapsed >= pendingAt.current) {
+      onSwinger(pendingSwinger.current, targetsRef.current);
+      pendingSwinger.current = null;
     }
 
     const segStart = segment * RALLY_SEGMENT;
-    const segEnd = segStart + RALLY_SEGMENT;
     const progress = (elapsed - segStart) / RALLY_SEGMENT;
+    const t = progress * RALLY_SEGMENT;
 
-    const p1 = PLAYERS[from];
-    const p2 = PLAYERS[to];
-    const fromPos = swayPosition(segStart, p1.base, p1.axis, p1.amplitude, p1.speed, p1.offset);
-    const toPos = swayPosition(segEnd, p2.base, p2.axis, p2.amplitude, p2.speed, p2.offset);
+    const fromPos: [number, number, number] = [targetsRef.current[from], 0, PLAYER_BASE_Z[from]];
+    const toPos: [number, number, number] = [targetsRef.current[to], 0, PLAYER_BASE_Z[to]];
     const [x, , z] = lerp3(fromPos, toPos, progress);
-    ref.current?.position.set(x, 0.3 + Math.sin(progress * Math.PI) * RALLY_ARC, z);
+    // Real gravity-driven flight with one bounce on the court partway
+    // through — the real shape of a tennis exchange: struck at contact
+    // height, arcs down, bounces, and rises back to the next player's
+    // contact height, instead of a fixed cosine hump that never touched
+    // the ground.
+    const y = bouncedFlightHeight(t, RALLY_SEGMENT, CONTACT_HEIGHT, BALL_RADIUS, CONTACT_HEIGHT, 0.62);
+
+    ref.current?.position.set(x, y, z);
+    if (ref.current) {
+      const horizontalSpeed = Math.hypot(toPos[0] - fromPos[0], toPos[2] - fromPos[2]) / RALLY_SEGMENT;
+      ref.current.rotation.x += horizontalSpeed * delta * 2.2;
+    }
+    trailRef.current.push([x, y, z]);
+    if (trailRef.current.length > 6) trailRef.current.shift();
   });
 
   return (
-    <mesh ref={ref}>
-      <sphereGeometry args={[0.15, 12, 12]} />
-      <meshStandardMaterial color="#d4f04c" />
-    </mesh>
+    <>
+      <mesh ref={ref}>
+        <sphereGeometry args={[BALL_RADIUS, 12, 12]} />
+        <meshStandardMaterial color="#d4f04c" />
+      </mesh>
+      <BallTrail positionsRef={trailRef} />
+    </>
   );
 }
 
 export default function TennisScene() {
   const [swingerIndex, setSwingerIndex] = useState<number | null>(null);
+  const [targets, setTargets] = useState<[number, number]>([0, 0]);
+  const active = useActiveZone() === "tennis";
 
   return (
     <>
-      <CameraDrift />
-      <GalaxyBackdrop />
       <ambientLight intensity={0.5} />
       {/* Low-intensity cool violet-blue fill — ties the scene into the new
           Galaxy palette without touching the tuned GLOW/directional rig
@@ -88,74 +156,73 @@ export default function TennisScene() {
       <directionalLight position={[5, 8, 4]} intensity={0.65} />
       <spotLight position={[0, 9, 0]} angle={0.6} penumbra={0.5} intensity={0.7} color={GLOW} />
 
-      {/* grass court */}
+      {/* grass court — kept as a standard (non-clearcoat) material: a
+          gloss coat suits polished wood/wet turf, not grass/clay */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[COURT_HALF_WIDTH * 2 + 3, COURT_HALF_LENGTH * 2 + 3]} />
+        <planeGeometry args={[COURT_HALF_WIDTH * 2 + 5, COURT_HALF_LENGTH * 2 + 6]} />
         <meshStandardMaterial color="#2f6b3c" />
       </mesh>
-      {/* court boundary lines */}
-      <mesh position={[0, -0.49, -COURT_HALF_LENGTH]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[COURT_HALF_WIDTH * 2, 0.08]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-      <mesh position={[0, -0.49, COURT_HALF_LENGTH]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[COURT_HALF_WIDTH * 2, 0.08]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-      <mesh position={[-COURT_HALF_WIDTH, -0.49, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.08, COURT_HALF_LENGTH * 2]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-      <mesh position={[COURT_HALF_WIDTH, -0.49, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.08, COURT_HALF_LENGTH * 2]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
+      <CourtMarkings />
 
-      {/* net */}
-      <mesh position={[0, 0.15, 0]}>
-        <boxGeometry args={[COURT_HALF_WIDTH * 2 + 0.6, 0.5, 0.05]} />
+      {/* net — real posts sit ~0.91m outside each sideline, net height
+          dips from 1.07m at the posts to 0.914m at the center; a flat
+          ~1.0m average is a reasonable stylized middle ground */}
+      <mesh position={[0, NET_HEIGHT / 2 - 0.5, 0]}>
+        <boxGeometry args={[COURT_HALF_WIDTH * 2 + 1.8, NET_HEIGHT, 0.05]} />
         <meshStandardMaterial color="#e5e7eb" transparent opacity={0.85} />
       </mesh>
 
       {/* stadium stands along both sides, rotated so their long axis runs
           the length of the court, plus a crowd above each (tiered seating,
           not hidden behind/below the stand wall) */}
-      <Stand position={[-COURT_HALF_WIDTH - 1.4, 0.55, 0]} rotation={[0.25, Math.PI / 2, 0]} width={COURT_HALF_LENGTH * 2 + 3} />
+      <Stand
+        position={[-COURT_HALF_WIDTH - 2.2, 0.55, 0]}
+        rotation={[0.25, Math.PI / 2, 0]}
+        width={COURT_HALF_LENGTH * 2 + 6}
+      />
       <Crowd
-        position={[-COURT_HALF_WIDTH - 1.9, 1.25, 0]}
+        position={[-COURT_HALF_WIDTH - 2.8, 1.25, 0]}
         rotation={[0, Math.PI / 2, 0]}
         accentColor={PLAYER_2_COLOR}
         rows={4}
         seatsPerRow={20}
       />
-      <Stand position={[COURT_HALF_WIDTH + 1.4, 0.55, 0]} rotation={[0.25, -Math.PI / 2, 0]} width={COURT_HALF_LENGTH * 2 + 3} />
+      <Stand
+        position={[COURT_HALF_WIDTH + 2.2, 0.55, 0]}
+        rotation={[0.25, -Math.PI / 2, 0]}
+        width={COURT_HALF_LENGTH * 2 + 6}
+      />
       <Crowd
-        position={[COURT_HALF_WIDTH + 1.9, 1.25, 0]}
+        position={[COURT_HALF_WIDTH + 2.8, 1.25, 0]}
         rotation={[0, -Math.PI / 2, 0]}
         accentColor={PLAYER_1_COLOR}
         rows={4}
         seatsPerRow={20}
       />
 
-      <FloodlightPole position={[-COURT_HALF_WIDTH - 2.5, 0, -COURT_HALF_LENGTH - 1]} glowColor={GLOW} />
-      <FloodlightPole position={[COURT_HALF_WIDTH + 2.5, 0, -COURT_HALF_LENGTH - 1]} glowColor={GLOW} />
-      <FloodlightPole position={[-COURT_HALF_WIDTH - 2.5, 0, COURT_HALF_LENGTH + 1]} glowColor={GLOW} />
-      <FloodlightPole position={[COURT_HALF_WIDTH + 2.5, 0, COURT_HALF_LENGTH + 1]} glowColor={GLOW} />
+      <FloodlightPole position={[-COURT_HALF_WIDTH - 3.5, 0, -COURT_HALF_LENGTH - 1.5]} glowColor={GLOW} />
+      <FloodlightPole position={[COURT_HALF_WIDTH + 3.5, 0, -COURT_HALF_LENGTH - 1.5]} glowColor={GLOW} />
+      <FloodlightPole position={[-COURT_HALF_WIDTH - 3.5, 0, COURT_HALF_LENGTH + 1.5]} glowColor={GLOW} />
+      <FloodlightPole position={[COURT_HALF_WIDTH + 3.5, 0, COURT_HALF_LENGTH + 1.5]} glowColor={GLOW} />
 
       <Player
         color={PLAYER_1_COLOR}
         animation={swingerIndex === 0 ? "swing" : "run"}
-        scale={0.55}
-        sway={{ ...PLAYERS[0], facingY: 0 }}
+        target={{ x: targets[0], z: PLAYER_BASE_Z[0], maxSpeed: 3, facingY: FACING_Y[0] }}
       />
       <Player
         color={PLAYER_2_COLOR}
         animation={swingerIndex === 1 ? "swing" : "run"}
-        scale={0.55}
-        sway={{ ...PLAYERS[1], facingY: Math.PI }}
+        target={{ x: targets[1], z: PLAYER_BASE_Z[1], maxSpeed: 3, facingY: FACING_Y[1] }}
       />
 
-      <Ball onSwinger={setSwingerIndex} />
+      <Ball
+        active={active}
+        onSwinger={(swinger, newTargets) => {
+          setSwingerIndex(swinger);
+          setTargets(newTargets);
+        }}
+      />
     </>
   );
 }

@@ -134,8 +134,20 @@ export function AppSidebar() {
 
         <NavLinks collapsed={collapsed} />
 
-        <div className="border-t border-white/10 px-4 py-4">
+        <div
+          className={cn(
+            "border-t border-white/10 px-4 py-4",
+            collapsed ? "flex flex-col items-center gap-3" : "flex items-center justify-between gap-2",
+          )}
+        >
           <LangToggle />
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            className="flex items-center gap-2 rounded-full border border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-3 py-1.5 text-xs font-semibold text-white/85 backdrop-blur-md transition hover:text-white"
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </Link>
         </div>
       </aside>
 
@@ -207,7 +219,16 @@ export function MobileTopBar() {
       <Link href="/" className="text-lg font-bold text-white">
         SportsWorld
       </Link>
-      <LangToggle />
+      <div className="flex items-center gap-2">
+        <LangToggle />
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className="flex items-center rounded-full border border-white/14 bg-white/5 p-1.5 text-white/85 backdrop-blur-md transition hover:text-white"
+        >
+          <Settings className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
   );
 }

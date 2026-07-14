@@ -24,6 +24,28 @@ function mulberry32(seed: number) {
 const rng = mulberry32(42);
 const choice = <T>(arr: T[]): T => arr[Math.floor(rng() * arr.length)];
 const randint = (min: number, max: number) => min + Math.floor(rng() * (max - min + 1));
+const randFloat = (min: number, max: number, decimals = 1) => {
+  const v = min + rng() * (max - min);
+  return Number(v.toFixed(decimals));
+};
+
+// Plausible season-stat chips for the player profile screen, varied by
+// position so a keeper/defender doesn't get a striker's goal tally. Purely
+// cosmetic mock data (no real-world source), same spirit as the rest of
+// this seed script.
+function footballSeasonStats(position: string) {
+  if (position === 'GK') return { goals: 0, assists: randint(0, 1), rating: randFloat(6.4, 7.3) };
+  if (position === 'DF') return { goals: randint(0, 3), assists: randint(0, 4), rating: randFloat(6.5, 7.6) };
+  if (position === 'MF') return { goals: randint(1, 7), assists: randint(2, 9), rating: randFloat(6.7, 7.9) };
+  return { goals: randint(6, 19), assists: randint(1, 7), rating: randFloat(6.9, 8.4) };
+}
+function basketballSeasonStats(position: string) {
+  if (position === 'PG') return { ppg: randFloat(11, 23), rpg: randFloat(2.5, 5), apg: randFloat(5, 10.5) };
+  if (position === 'SG') return { ppg: randFloat(13, 25), rpg: randFloat(2.5, 5), apg: randFloat(2, 5) };
+  if (position === 'SF') return { ppg: randFloat(11, 21), rpg: randFloat(4, 7.5), apg: randFloat(2, 5) };
+  if (position === 'PF') return { ppg: randFloat(9, 18), rpg: randFloat(6, 10.5), apg: randFloat(1, 3.5) };
+  return { ppg: randFloat(8, 17), rpg: randFloat(8, 13.5), apg: randFloat(1, 3) };
+}
 
 const FOOTBALL_TEAMS: [string, string, string, string][] = [
   ['Real Madrid', 'RMA', 'Spain', '#FEBE10'],
@@ -140,7 +162,7 @@ async function wipe() {
   await prisma.nameTranslation.deleteMany();
 }
 
-async function createSquad(teamId: number, template: string[]) {
+async function createSquad(teamId: number, template: string[], sport: 'football' | 'basketball') {
   const used = new Set<string>();
   const players = [];
   for (let i = 0; i < template.length; i++) {
@@ -149,9 +171,10 @@ async function createSquad(teamId: number, template: string[]) {
       name = `${choice(FIRST_NAMES)} ${choice(LAST_NAMES)}`;
     } while (used.has(name));
     used.add(name);
+    const seasonStats = sport === 'football' ? footballSeasonStats(template[i]) : basketballSeasonStats(template[i]);
     players.push(
       await prisma.player.create({
-        data: { teamId, name, position: template[i], shirtNumber: i + 1 },
+        data: { teamId, name, position: template[i], shirtNumber: i + 1, seasonStats },
       }),
     );
   }
@@ -173,7 +196,7 @@ async function seedTeamSport(
 
   const players: Record<string, any[]> = {};
   for (const [, short] of teamDefs) {
-    players[short] = await createSquad(teams[short].id, squadTemplate);
+    players[short] = await createSquad(teams[short].id, squadTemplate, sport);
   }
 
   const shorts = Object.keys(teams);
@@ -234,6 +257,20 @@ async function seedTeamSport(
   // Today's fixtures + lineups
   for (const [home, away, competition, venue, hour, status] of fixtures) {
     const isLive = status === 'live';
+    // Match-detail Overview tab stat rows — only populated for live/finished
+    // games (matches the design brief's own mock data, which leaves
+    // upcoming fixtures at all-zero/absent rather than faking pre-match
+    // numbers).
+    const footballStats =
+      sport === 'football' && isLive
+        ? (() => {
+            const homePoss = randint(42, 62);
+            return {
+              home: { possession: homePoss, shots: randint(8, 16), shotsOnTarget: randint(3, 8), corners: randint(2, 8) },
+              away: { possession: 100 - homePoss, shots: randint(6, 14), shotsOnTarget: randint(2, 6), corners: randint(1, 6) },
+            };
+          })()
+        : null;
     const game = await prisma.game.create({
       data: {
         sport,
@@ -246,6 +283,7 @@ async function seedTeamSport(
         minute: sport === 'football' && isLive ? 60 : null,
         homeScore: isLive ? (sport === 'football' ? 1 : null) : null,
         awayScore: isLive ? (sport === 'football' ? 1 : null) : null,
+        stats: footballStats ?? undefined,
       },
     });
 
@@ -286,7 +324,17 @@ async function seedTeamSport(
         awayTotal += a;
         await prisma.quarterScore.create({ data: { gameId: game.id, quarter: q, homeScore: h, awayScore: a } });
       }
-      await prisma.game.update({ where: { id: game.id }, data: { homeScore: homeTotal, awayScore: awayTotal } });
+      await prisma.game.update({
+        where: { id: game.id },
+        data: {
+          homeScore: homeTotal,
+          awayScore: awayTotal,
+          stats: {
+            home: { points: homeTotal, rebounds: randint(32, 48), assists: randint(16, 28), fgPct: randint(42, 52) },
+            away: { points: awayTotal, rebounds: randint(30, 46), assists: randint(14, 26), fgPct: randint(40, 50) },
+          },
+        },
+      });
     }
   }
 
@@ -296,7 +344,11 @@ async function seedTeamSport(
 async function seedTennis() {
   const players: Record<string, { id: number; tour: 'atp' | 'wta' }> = {};
   for (const [name, country, tour, ranking] of TENNIS_PLAYERS) {
-    players[name] = await prisma.tennisPlayer.create({ data: { name, country, tour, ranking } });
+    // Higher-ranked players get a plausibly better win% (mock data, no real
+    // source), same spirit as footballSeasonStats/basketballSeasonStats.
+    const winPct = randFloat(Math.max(50, 90 - ranking * 5), Math.max(65, 96 - ranking * 4));
+    const acesPerMatch = randFloat(3, 15);
+    players[name] = await prisma.tennisPlayer.create({ data: { name, country, tour, ranking, winPct, acesPerMatch } });
   }
   const names = Object.keys(players);
 
@@ -356,6 +408,12 @@ async function seedTennis() {
         status: isLive ? 'live' : 'scheduled',
         player1Id: players[p1Name].id,
         player2Id: players[p2Name].id,
+        stats: isLive
+          ? {
+              home: { aces: randint(4, 13), winners: randint(15, 32), unforcedErrors: randint(8, 20), doubleFaults: randint(0, 4) },
+              away: { aces: randint(3, 12), winners: randint(14, 30), unforcedErrors: randint(9, 22), doubleFaults: randint(0, 4) },
+            }
+          : undefined,
       },
     });
     if (isLive) {

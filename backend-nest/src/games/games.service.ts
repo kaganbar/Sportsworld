@@ -64,10 +64,13 @@ export class GamesService {
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
+    // A 2-day window (today + tomorrow), not just today — the frontend's
+    // "Upcoming" tab otherwise goes empty for any competition with no more
+    // fixtures later today, even when it plays again tomorrow.
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
-    end.setDate(end.getDate() + 1);
+    end.setDate(end.getDate() + 2);
 
     let competitionId: number | undefined;
     if (competition) {
@@ -98,12 +101,14 @@ export class GamesService {
     };
   }
 
-  private async lineupDto(l: { player: any; position: string; isStarting: boolean }, lang: Lang) {
+  private async lineupDto(l: { player: any; teamId: number; position: string; isStarting: boolean }, lang: Lang) {
     return {
+      id: l.player.id,
       name: await this.translations.translate(l.player.name, lang),
       shirt_number: l.player.shirtNumber,
       position: l.position,
       is_starting: l.isStarting,
+      team_id: l.teamId,
     };
   }
 
@@ -158,6 +163,12 @@ export class GamesService {
         away: await Promise.all(awayLineup.map((l) => this.lineupDto(l, lang))),
       },
       stats: { home: statsDto(homeStats), away: statsDto(awayStats) },
+      // Raw per-game team stat breakdown (possession/shots/... or
+      // points/rebounds/...) for the match-detail Overview tab's proportion
+      // bars — deliberately a different key than `stats` above, which is
+      // recent-form W/D/L, not this match's own numbers. Null when the
+      // scraper/seed hasn't populated it (e.g. not-yet-live fixtures).
+      game_stats: game.stats ?? null,
       recent_form: {
         home: await Promise.all(homeRecent.map((r) => this.resultDto(r, lang))),
         away: await Promise.all(awayRecent.map((r) => this.resultDto(r, lang))),

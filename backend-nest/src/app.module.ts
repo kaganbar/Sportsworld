@@ -8,6 +8,7 @@ import { RedisModule } from './redis/redis.module';
 import { TranslationsModule } from './translations/translations.module';
 import { StatsModule } from './stats/stats.module';
 import { GamesModule } from './games/games.module';
+import { PlayersModule } from './players/players.module';
 import { BasketballModule } from './basketball/basketball.module';
 import { TennisModule } from './tennis/tennis.module';
 import { FootballAgentModule } from './agents/football-agent/football-agent.module';
@@ -39,6 +40,7 @@ import { StandingsModule } from './standings/standings.module';
     CompetitionsModule,
     StandingsModule,
     GamesModule,
+    PlayersModule,
     BasketballModule,
     TennisModule,
     FootballAgentModule,

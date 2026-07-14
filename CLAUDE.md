@@ -39,6 +39,28 @@ No test suite exists yet in either app. There is no `manage.py test` config or f
 
 Ports: frontend `localhost:5173`, backend `localhost:8000` (health check at `/api/health/`, WebSockets at `/ws/...`), Postgres `localhost:5432`. Redis has no host port exposed (internal-only, used by the Channels layer).
 
+**Note:** the above describes the original Django/Vite stack (`backend/`, `frontend/`). The project has since moved to `backend-nest/` (NestJS + Prisma) and `frontend-next/` (Next.js) — see memory for the pivot history; this file hasn't been fully updated to match yet.
+
+### Desktop shell (Tauri)
+
+`frontend-next/src-tauri/` wraps the Next.js app (`frontend-next/`) in a
+native desktop shell via Tauri v2. Requires a Rust toolchain on the host
+(`rustup`) and `cargo install tauri-cli --version "^2"` — unlike the rest
+of this project, Tauri's own CLI runs on the host, not in Docker (it needs
+to open a native window), but it never needs Node/npm itself: the frontend
+build still happens inside the `frontend-next` container.
+
+```bash
+# Dev — requires `docker compose up` already running (frontend-next's
+# `next dev` on :3000 is what the shell's window points at):
+cd frontend-next && cargo tauri dev
+
+# Production bundle — runs `docker compose exec frontend-next npm run build`
+# itself (a static export, output: 'export' in next.config.js) before
+# bundling the native app:
+cd frontend-next && cargo tauri build
+```
+
 **Frontend package caveat:** this app is pinned to **React 18**. `@react-three/fiber`/`@react-three/drei` latest majors (v9/v10) require React 19 and will fail `npm install` with an ERESOLVE conflict — install the v8 line (`@react-three/fiber@^8`, `@react-three/drei@^9`) instead, or upgrade React first if that's ever a deliberate decision.
 
 ## Architecture

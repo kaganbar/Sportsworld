@@ -18,6 +18,10 @@ frontend/vite.config.js
 frontend/vite.config.d.ts
 frontend-next/.next/
 frontend-next/next-env.d.ts
+frontend-next/out/
+
+# Rust / Tauri
+frontend-next/src-tauri/target/
 
 # Editors / OS
 .vscode/

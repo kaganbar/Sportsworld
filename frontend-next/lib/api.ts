@@ -28,10 +28,42 @@ export interface Game {
 }
 
 export interface LineupEntry {
+  id: number;
   name: string;
   shirt_number: number;
   position: string;
   is_starting: boolean;
+  team_id: number;
+}
+
+// Match-detail Overview tab proportion-bar data. Loose/optional-keyed
+// (rather than a discriminated union) since the consumer already knows
+// which sport it's on and reads only the relevant keys per a statSchema-like
+// row list, mirroring the design brief's own statSchema.
+export interface GameStatsSide {
+  possession?: number;
+  shots?: number;
+  shotsOnTarget?: number;
+  corners?: number;
+  points?: number;
+  rebounds?: number;
+  assists?: number;
+  fgPct?: number;
+}
+export interface GameStats {
+  home: GameStatsSide;
+  away: GameStatsSide;
+}
+
+export interface TennisStatsSide {
+  aces: number;
+  winners: number;
+  unforcedErrors: number;
+  doubleFaults: number;
+}
+export interface TennisMatchStats {
+  home: TennisStatsSide;
+  away: TennisStatsSide;
 }
 
 export interface PastResult {
@@ -62,6 +94,7 @@ export interface GameDetail {
   game: Game;
   lineups: { home: LineupEntry[]; away: LineupEntry[] };
   stats: { home: FormStats; away: FormStats };
+  game_stats: GameStats | null;
   recent_form: { home: PastResult[]; away: PastResult[] };
   head_to_head: PastResult[];
   injuries: { home: InjuryEntry[]; away: InjuryEntry[] };
@@ -114,6 +147,7 @@ export interface BasketballGameDetail {
   quarters: QuarterScore[];
   lineups: { home: LineupEntry[]; away: LineupEntry[] };
   stats: { home: FormStats; away: FormStats };
+  game_stats: GameStats | null;
   recent_form: { home: PastResult[]; away: PastResult[] };
   head_to_head: PastResult[];
   injuries: { home: InjuryEntry[]; away: InjuryEntry[] };
@@ -184,6 +218,7 @@ export interface TennisMatchDetail {
   match: TennisMatch;
   sets: TennisSet[];
   stats: { player1: TennisFormStats; player2: TennisFormStats };
+  match_stats: TennisMatchStats | null;
   recent_form: { player1: TennisMatchResult[]; player2: TennisMatchResult[] };
   head_to_head: TennisMatchResult[];
 }
@@ -272,3 +307,40 @@ export interface RankingEntry {
 
 export const fetchRankings = (tour: "atp" | "wta", lang: Lang = "en") =>
   get<RankingEntry[]>(`/api/rankings?tour=${tour}&lang=${lang}`);
+
+// --- Player profiles ---
+
+export interface FootballSeasonStats {
+  goals: number;
+  assists: number;
+  rating: number;
+}
+export interface BasketballSeasonStats {
+  ppg: number;
+  rpg: number;
+  apg: number;
+}
+
+export interface PlayerProfile {
+  id: number;
+  name: string;
+  position: string;
+  sport: "football" | "basketball";
+  team: { id: number; name: string; short_name: string };
+  season_stats: FootballSeasonStats | BasketballSeasonStats | null;
+}
+
+export const fetchPlayer = (id: string, lang: Lang = "en") => get<PlayerProfile>(`/api/players/${id}?lang=${lang}`);
+
+export interface TennisPlayerProfile {
+  id: number;
+  name: string;
+  country: string;
+  tour: "atp" | "wta";
+  ranking: number | null;
+  win_pct: number | null;
+  aces_per_match: number | null;
+}
+
+export const fetchTennisPlayer = (id: string, lang: Lang = "en") =>
+  get<TennisPlayerProfile>(`/api/tennis/players/${id}?lang=${lang}`);

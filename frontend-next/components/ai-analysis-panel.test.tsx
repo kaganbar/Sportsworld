@@ -35,7 +35,9 @@ describe("AiAnalysisPanel", () => {
 
     await waitFor(() => expect(screen.getByText(sampleAnalysis.summary)).toBeInTheDocument());
 
-    expect(screen.getByText("60%")).toBeInTheDocument();
+    // "60%" appears twice: the confidence gauge (derived as the strongest
+    // segment's own probability) and the matching probability segment bar.
+    expect(screen.getAllByText("60%")).toHaveLength(2);
     expect(screen.getByText("40%")).toBeInTheDocument();
     expect(screen.getByText("Strong recent form")).toBeInTheDocument();
     expect(fetchAnalysis).toHaveBeenCalledWith("1", expect.any(String));

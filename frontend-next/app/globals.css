@@ -24,6 +24,22 @@
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
     --radius: 0.5rem;
+
+    /* Fixed brand accent (sky blue) — interactive chrome (buttons, active
+       tabs, links, breadcrumbs) everywhere in the app, independent of which
+       sport zone is active. Deliberately separate from --sport-accent/
+       --sport-glow (set per-page by ThemeLayout/PageShell), which stay
+       reserved for ambient/wayfinding tint only — see the redesign plan's
+       "Design tokens" section for why these two systems don't merge. */
+    --brand-accent: #38bdf8;
+    --brand-accent-2: #0ea5e9;
+    /* AI Analysis panel's own accent (violet, mixed with the brand blue in
+       gradients) — kept distinct from --brand-accent so the AI tab reads as
+       a deliberately different, "smarter" surface, not just another tab. */
+    --ai-accent: #7c5cff;
+    --status-live: #f87171;
+    --status-upcoming: #8fd7ff;
+    --status-finished: #8b94a3;
   }
 
   .dark {
@@ -66,8 +82,84 @@
      bg-white/5 keeps it reading as premium glass rather than "excessively
      transparent" — readability over busy content is the whole point. */
   .glass-panel {
-    @apply relative border border-white/10 bg-white/[0.07] shadow-premium backdrop-blur-xl;
+    @apply relative overflow-hidden border border-white/10 bg-white/[0.07] shadow-premium backdrop-blur-xl;
     border-top-color: rgba(255, 255, 255, 0.22);
     background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0) 45%);
+  }
+
+  /* The "atmosphere reflecting on the glass" ask from the AAA design brief
+     — browsers can't literally reflect the 3D scene onto a DOM element, so
+     this is the honest approximation: a slow diagonal sheen tinted with
+     this page's --sport-glow (set by ThemeLayout/PageShell), sweeping via
+     background-position so it reads as catching shifting light rather than
+     sitting static. --scroll-progress (see components/scroll-progress.tsx,
+     mounted once in app/layout.tsx) nudges its intensity so it visibly
+     responds to scrolling too, not just time. */
+  .glass-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(
+      115deg,
+      transparent 20%,
+      color-mix(in srgb, var(--sport-glow, #7c6cff) 40%, transparent) 50%,
+      transparent 80%
+    );
+    background-size: 250% 250%;
+    opacity: calc((0.35 + var(--scroll-progress, 0) * 0.35) * var(--focus-mode-mult, 1));
+    mix-blend-mode: overlay;
+    animation: glass-sheen 9s ease-in-out infinite;
+  }
+}
+
+@keyframes glass-sheen {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@layer components {
+  /* Live-status pulsing dot — a slightly less mechanical rhythm than
+     Tailwind's stock animate-pulse (2s, opacity 1↔0.5): matches the design
+     brief's 1.4-1.6s ease-in-out sweep through 100%→30%→100% so it reads as
+     a heartbeat, not a blink. */
+  .live-dot {
+    animation: sw-pulse 1.5s ease-in-out infinite;
+  }
+
+  /* One drifting radial-gradient blob — components/ambient-glow.tsx renders
+     two of these (different duration/direction) per the brief's swDrift
+     spec. Kept as a reusable class rather than inline animation strings so
+     the ambient layer and any future glow use share one definition. */
+  .ambient-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    animation: sw-drift 24s ease-in-out infinite;
+  }
+}
+
+@keyframes sw-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes sw-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(24px, -28px);
   }
 }

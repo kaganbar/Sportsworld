@@ -34,20 +34,21 @@ export default function CompetitionPicker({ sport, basePath }: { sport: ApiSport
           ))}
         </div>
       )}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {competitions?.map((c) => {
           const accent = competitionAccents[c.slug];
           return (
             <Link key={c.slug} href={`${basePath}/${c.slug}`}>
               <Card
-                className="flex h-20 items-center justify-center p-3 text-center transition hover:scale-[1.02] hover:bg-accent"
+                className="flex h-24 flex-col items-start justify-center gap-2 rounded-[20px] p-5 text-start transition duration-200 hover:-translate-y-1 hover:border-[var(--brand-accent)]/40"
                 style={accent ? { borderColor: accent, boxShadow: `0 0 0 1px ${accent}33` } : undefined}
                 variant="glass"
               >
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-accent)]" />
                 {/* line-clamp-2 + break-words: a long (esp. Hebrew) competition
                     name must wrap and clip gracefully within the fixed-height
                     tile, never overflow it. */}
-                <span className="line-clamp-2 break-words text-sm font-semibold leading-snug text-white">{c.name}</span>
+                <span className="line-clamp-2 break-words text-[15px] font-bold leading-snug text-white">{c.name}</span>
               </Card>
             </Link>
           );

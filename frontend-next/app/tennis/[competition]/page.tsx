@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 import ThemeLayout from "@/components/theme-layout";
 import MatchCard from "@/components/match-card";
@@ -55,11 +54,12 @@ export default function TennisCompetitionHub({ params }: { params: { competition
   const upcoming = matches?.filter((m) => m.status !== "live") ?? [];
 
   return (
-    <ThemeLayout sport="tennis" competitionAccent={competitionAccents[competition]} competitionLabel={label}>
-      <Link href="/tennis" className="mb-4 inline-block text-sm text-white/80 hover:text-white">
-        {t("backToCompetitions")}
-      </Link>
-
+    <ThemeLayout
+      sport="tennis"
+      competitionAccent={competitionAccents[competition]}
+      competitionLabel={label}
+      breadcrumbExtra={label ? [{ label, href: `/tennis/${competition}` }] : []}
+    >
       <Tabs defaultValue="live" className="mt-2">
         <TabsList className="mb-4">
           <TabsTrigger value="live">{t("tab_live")}</TabsTrigger>

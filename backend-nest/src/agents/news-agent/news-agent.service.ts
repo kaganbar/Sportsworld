@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AgentCallerService } from '../common/agent-caller.service';
 import { CompetitionsService } from '../../competitions/competitions.service';
+import { TranslationsService } from '../../translations/translations.service';
+import { Lang } from '../../common/lang.decorator';
 import { NewsClusterSummarySchema, NewsClusterSummary } from './news-agent.schema';
 
 const SYSTEM_PROMPT = `You are the SportsWorld News Agent. You receive a JSON list of
@@ -49,7 +51,40 @@ export class NewsAgentService {
     private readonly prisma: PrismaService,
     private readonly agentCaller: AgentCallerService,
     private readonly competitions: CompetitionsService,
+    private readonly translations: TranslationsService,
   ) {}
+
+  /** News mentioning a given subject by name — a team (football/basketball)
+   * or a player (tennis) — used by each sport agent's enrichment tool loop.
+   * There's no dedicated subject<->cluster relation, so this reuses the same
+   * case-insensitive substring match CompetitionsService.competitionsForText
+   * already does internally (it computes this exact match today only to
+   * derive competition IDs from it, discarding the match itself). In-memory
+   * filter over a bounded recent window rather than a DB text-search index —
+   * this is a dev-scale scraper-fed dataset, not worth the extra
+   * infrastructure. */
+  async getNewsForSubject(subjectName: string, lang: Lang, limit = 5) {
+    const needle = subjectName.toLowerCase();
+    const recent = await this.prisma.newsStoryCluster.findMany({
+      where: { summary: { not: null } },
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+      include: { articles: true },
+    });
+
+    const matches = recent.filter((c) => {
+      const haystack = [c.headline, c.summary ?? '', ...c.articles.map((a) => a.title)].join(' ').toLowerCase();
+      return haystack.includes(needle);
+    });
+
+    return Promise.all(
+      matches.slice(0, limit).map(async (c) => ({
+        headline: await this.translations.translate(c.headline, lang),
+        summary: c.summary ? await this.translations.translate(c.summary, lang) : null,
+        updated_at: c.updatedAt.toISOString(),
+      })),
+    );
+  }
 
   /** Best-effort competition tagging (see CompetitionsService.competitionsForText):
    * matches team/player names mentioned in the cluster's own text against

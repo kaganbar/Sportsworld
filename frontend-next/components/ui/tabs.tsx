@@ -50,12 +50,15 @@ export function Tabs({
 
 export function TabsList({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div role="tablist" className={cn("glass-panel inline-flex flex-wrap items-center gap-1 rounded-lg p-1", className)}>
+    <div role="tablist" className={cn("inline-flex flex-wrap items-center gap-2.5", className)}>
       {children}
     </div>
   );
 }
 
+// Pill buttons with the design brief's exact active/inactive treatment: a
+// translucent brand-accent tint (not a solid fill — that look is reserved
+// for the language toggle) vs. a faint neutral outline when inactive.
 export function TabsTrigger({ value, className, children }: { value: string; className?: string; children: React.ReactNode }) {
   const ctx = useTabsContext();
   const active = ctx.value === value;
@@ -67,8 +70,10 @@ export function TabsTrigger({ value, className, children }: { value: string; cla
       data-state={active ? "active" : "inactive"}
       onClick={() => ctx.setValue(value)}
       className={cn(
-        "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-        active ? "bg-[var(--sport-accent)] text-white shadow-sm" : "text-white/70 hover:text-white",
+        "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
+        active
+          ? "border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/[0.14] text-[var(--status-upcoming)]"
+          : "border-white/10 bg-white/[0.03] text-white/60 hover:text-white/85",
         className,
       )}
     >

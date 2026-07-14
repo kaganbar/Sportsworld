@@ -25,8 +25,12 @@ export default function Crowd({
   rotation = [0, 0, 0],
   rows = 5,
   seatsPerRow = 24,
-  seatSpacing = 0.4,
-  rowRise = 0.32,
+  // Real human-scale spacing/box size — the rest of the world is now built
+  // at 1 unit = 1 meter (see FootballScene/BasketballScene/TennisScene), so
+  // a spectator silhouette needs to be roughly person-sized too, or the
+  // crowd reads as a dollhouse next to a real-sized pitch/court.
+  seatSpacing = 0.55,
+  rowRise = 0.4,
   baseColor = "#1f2937",
   accentColor,
 }: CrowdProps) {
@@ -50,7 +54,7 @@ export default function Crowd({
   return (
     <group position={position} rotation={rotation}>
       <Instances limit={rows * seatsPerRow}>
-        <boxGeometry args={[0.26, 0.5, 0.26]} />
+        <boxGeometry args={[0.45, 0.9, 0.45]} />
         <meshStandardMaterial />
         {seats.map((seat, i) => (
           <Instance

@@ -4,8 +4,6 @@ import Link from "next/link";
 
 import { TKey } from "@/lib/i18n";
 import { TennisMatch } from "@/lib/api";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 function startTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -14,26 +12,30 @@ function startTime(iso: string) {
 // Tennis's list-row card — shared by the top-level matches list and now the
 // competition hub's Live/Upcoming tabs. Unlike football/basketball's
 // GameCard, no live-score WebSocket at list level (matches existing
-// behavior — live ticking is only wired on the tennis detail page).
+// behavior — live ticking is only wired on the tennis detail page). Same
+// glass row layout/status treatment as GameCard for a consistent design
+// language across sports (per the redesign brief).
 export default function MatchCard({ match, t }: { match: TennisMatch; t: (key: TKey) => string }) {
+  const isLive = match.status === "live";
+  const isFinished = match.status === "finished";
+  const statusLabel = isLive ? t("liveNow") : isFinished ? t("statusFinished") : startTime(match.start_time);
+  const statusColorVar = isLive ? "var(--status-live)" : isFinished ? "var(--status-finished)" : "var(--status-upcoming)";
+
   return (
     <Link href={`/tennis/matches/${match.id}`}>
-      <Card className="flex items-center justify-between gap-4 p-4 transition hover:bg-accent">
-        <div className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
-          <span>
-            {match.tournament} · {match.round}
-            {match.status === "live" && <Badge variant="live" className="ms-2">{t("liveNow")}</Badge>}
+      <div className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-[20px] p-5 transition duration-200 hover:-translate-y-1 hover:border-[var(--brand-accent)]/40">
+        <div className="flex min-w-[260px] flex-1 items-center gap-4">
+          <span className="flex-1 text-end text-[15px] font-bold text-white">{match.player1.name}</span>
+          <span dir="ltr" className="min-w-[64px] rounded-lg bg-white/10 px-3 py-1.5 text-center text-sm font-extrabold text-white">
+            vs
           </span>
+          <span className="flex-1 text-start text-[15px] font-bold text-white">{match.player2.name}</span>
         </div>
-        <div className="flex flex-1 items-center justify-center gap-3">
-          <span className="text-sm font-medium">{match.player1.name}</span>
-          <span className="rounded-md bg-muted px-2 py-1 text-sm font-bold" dir="ltr">
-            {match.status === "scheduled" ? startTime(match.start_time) : t("liveNow")}
-          </span>
-          <span className="text-sm font-medium">{match.player2.name}</span>
+        <div className="flex min-w-[120px] items-center justify-end gap-2 text-sm font-semibold" style={{ color: statusColorVar }}>
+          {isLive && <span className="live-dot h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--status-live)]" />}
+          {statusLabel}
         </div>
-        <div className="flex-1 text-end text-xs text-muted-foreground">{match.venue}</div>
-      </Card>
+      </div>
     </Link>
   );
 }
