@@ -2,7 +2,7 @@ import type { Lang } from "./i18n";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
-export type SportKey = "football" | "basketball" | "tennis";
+export type SportKey = "football" | "basketball" | "tennis" | "baseball" | "volleyball";
 
 const competitionQuery = (competition?: string) => (competition ? `&competition=${competition}` : "");
 
@@ -49,6 +49,14 @@ export interface GameStatsSide {
   rebounds?: number;
   assists?: number;
   fgPct?: number;
+  hits?: number;
+  runs?: number;
+  errors?: number;
+  walks?: number;
+  kills?: number;
+  digs?: number;
+  blocks?: number;
+  aces?: number;
 }
 export interface GameStats {
   home: GameStatsSide;
@@ -168,6 +176,76 @@ export const fetchBasketballGameDetail = (id: string, lang: Lang = "en") =>
   get<BasketballGameDetail>(`/api/basketball/games/${id}/?lang=${lang}`);
 export const fetchBasketballAnalysis = (id: string, lang: "en" | "he" = "en") =>
   get<BasketballAnalysis>(`/api/basketball/games/${id}/analysis/?lang=${lang}`);
+
+// --- Baseball ---
+
+export interface InningScore {
+  inning: number;
+  home_score: number;
+  away_score: number;
+}
+
+export interface BaseballGameDetail {
+  game: Game;
+  innings: InningScore[];
+  lineups: { home: LineupEntry[]; away: LineupEntry[] };
+  stats: { home: FormStats; away: FormStats };
+  game_stats: GameStats | null;
+  recent_form: { home: PastResult[]; away: PastResult[] };
+  head_to_head: PastResult[];
+  injuries: { home: InjuryEntry[]; away: InjuryEntry[] };
+}
+
+export interface BaseballAnalysis {
+  summary: string;
+  key_factors: string[];
+  probabilities: { home_win: number; away_win: number };
+  confidence: "low" | "medium" | "high";
+  model: string;
+  created_at: string;
+}
+
+export const fetchBaseballGames = (lang: Lang = "en", competition?: string) =>
+  get<Game[]>(`/api/games/today/?sport=baseball&lang=${lang}${competitionQuery(competition)}`);
+export const fetchBaseballGameDetail = (id: string, lang: Lang = "en") =>
+  get<BaseballGameDetail>(`/api/baseball/games/${id}/?lang=${lang}`);
+export const fetchBaseballAnalysis = (id: string, lang: "en" | "he" = "en") =>
+  get<BaseballAnalysis>(`/api/baseball/games/${id}/analysis/?lang=${lang}`);
+
+// --- Volleyball ---
+
+export interface SetScore {
+  set_number: number;
+  home_score: number;
+  away_score: number;
+}
+
+export interface VolleyballGameDetail {
+  game: Game;
+  sets: SetScore[];
+  lineups: { home: LineupEntry[]; away: LineupEntry[] };
+  stats: { home: FormStats; away: FormStats };
+  game_stats: GameStats | null;
+  recent_form: { home: PastResult[]; away: PastResult[] };
+  head_to_head: PastResult[];
+  injuries: { home: InjuryEntry[]; away: InjuryEntry[] };
+}
+
+export interface VolleyballAnalysis {
+  summary: string;
+  key_factors: string[];
+  probabilities: { home_win: number; away_win: number };
+  confidence: "low" | "medium" | "high";
+  model: string;
+  created_at: string;
+}
+
+export const fetchVolleyballGames = (lang: Lang = "en", competition?: string) =>
+  get<Game[]>(`/api/games/today/?sport=volleyball&lang=${lang}${competitionQuery(competition)}`);
+export const fetchVolleyballGameDetail = (id: string, lang: Lang = "en") =>
+  get<VolleyballGameDetail>(`/api/volleyball/games/${id}/?lang=${lang}`);
+export const fetchVolleyballAnalysis = (id: string, lang: "en" | "he" = "en") =>
+  get<VolleyballAnalysis>(`/api/volleyball/games/${id}/analysis/?lang=${lang}`);
 
 // --- Tennis ---
 
@@ -296,8 +374,11 @@ export interface StandingsRow {
   points: number;
 }
 
-export const fetchStandings = (sport: "football" | "basketball", competition: string, lang: Lang = "en") =>
-  get<StandingsRow[]>(`/api/standings?sport=${sport}&competition=${competition}&lang=${lang}`);
+export const fetchStandings = (
+  sport: "football" | "basketball" | "baseball" | "volleyball",
+  competition: string,
+  lang: Lang = "en",
+) => get<StandingsRow[]>(`/api/standings?sport=${sport}&competition=${competition}&lang=${lang}`);
 
 export interface RankingEntry {
   id: number;
@@ -321,14 +402,24 @@ export interface BasketballSeasonStats {
   rpg: number;
   apg: number;
 }
+export interface BaseballSeasonStats {
+  avg: number;
+  homeRuns: number;
+  rbi: number;
+}
+export interface VolleyballSeasonStats {
+  kills: number;
+  digs: number;
+  blocks: number;
+}
 
 export interface PlayerProfile {
   id: number;
   name: string;
   position: string;
-  sport: "football" | "basketball";
+  sport: "football" | "basketball" | "baseball" | "volleyball";
   team: { id: number; name: string; short_name: string };
-  season_stats: FootballSeasonStats | BasketballSeasonStats | null;
+  season_stats: FootballSeasonStats | BasketballSeasonStats | BaseballSeasonStats | VolleyballSeasonStats | null;
 }
 
 export const fetchPlayer = (id: string, lang: Lang = "en") => get<PlayerProfile>(`/api/players/${id}?lang=${lang}`);

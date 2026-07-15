@@ -57,6 +57,28 @@ export const sportsTheme = {
     glowRgb: "45,212,191",
     available: true,
   },
+  baseball: {
+    label: "Baseball",
+    emoji: "⚾",
+    accent: "#b91c1c",
+    accentSoft: "#dc2626",
+    background:
+      "radial-gradient(circle at 50% 15%, rgba(255,255,255,0.1), transparent 55%), linear-gradient(160deg, #450a0a, #b91c1c)",
+    glow: "#f87171",
+    glowRgb: "248,113,113",
+    available: true,
+  },
+  volleyball: {
+    label: "Volleyball",
+    emoji: "🏐",
+    accent: "#ca8a04",
+    accentSoft: "#eab308",
+    background:
+      "radial-gradient(circle at 50% 15%, rgba(255,255,255,0.1), transparent 55%), linear-gradient(160deg, #422006, #ca8a04)",
+    glow: "#fbbf24",
+    glowRgb: "251,191,36",
+    available: true,
+  },
 } as const;
 
 export type SportKey = keyof typeof sportsTheme;
@@ -73,27 +95,12 @@ export const statusColor = {
   finished: "#8b94a3",
 } as const;
 
-// "Other Sports" sub-menu — navigation scaffolding only for now (no backend
-// models/agents yet), same shape/pattern as sportsTheme so building these out
-// later is additive, not a restructure.
-export const otherSportsTheme = {
-  baseball: {
-    label: "Baseball",
-    emoji: "⚾",
-    accent: "#b91c1c",
-    accentSoft: "#dc2626",
-    background: "linear-gradient(160deg, #78350f, #b91c1c)",
-    available: false,
-  },
-  volleyball: {
-    label: "Volleyball",
-    emoji: "🏐",
-    accent: "#ca8a04",
-    accentSoft: "#eab308",
-    background: "linear-gradient(160deg, #713f12, #ca8a04)",
-    available: false,
-  },
-} as const;
+// "Other Sports" sub-menu — navigation scaffolding for any sport with no
+// backend models/agents yet, same shape/pattern as sportsTheme so building
+// one out later is additive, not a restructure. Empty now that baseball and
+// volleyball have graduated into sportsTheme above; kept (rather than
+// deleted outright) as the landing spot for the next sport this project adds.
+export const otherSportsTheme = {} as const;
 
 export type OtherSportKey = keyof typeof otherSportsTheme;
 

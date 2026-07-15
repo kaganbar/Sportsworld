@@ -34,7 +34,10 @@ function dockFor(zone: ActiveZone): Dock {
   if (zone === "home") {
     return {
       position: new THREE.Vector3(...HOME_CAMERA.position),
-      lookAt: new THREE.Vector3(...ZONES.basketball.offset),
+      // Looks at the 5-zone midpoint (tennis's own x=360 offset), not
+      // basketball specifically — basketball was the geometric center back
+      // when there were only 3 zones; tennis is now the middle of 5.
+      lookAt: new THREE.Vector3(...ZONES.tennis.offset),
       fov: HOME_CAMERA.fov,
     };
   }

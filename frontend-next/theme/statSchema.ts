@@ -31,3 +31,17 @@ export const TENNIS_STAT_ROWS: StatRowSchema<TennisStatsSide>[] = [
   { key: "unforcedErrors", labelKey: "stat_unforcedErrors" },
   { key: "doubleFaults", labelKey: "stat_doubleFaults" },
 ];
+
+export const BASEBALL_STAT_ROWS: StatRowSchema<GameStatsSide>[] = [
+  { key: "hits", labelKey: "stat_hits" },
+  { key: "runs", labelKey: "stat_runs" },
+  { key: "errors", labelKey: "stat_errors" },
+  { key: "walks", labelKey: "stat_walks" },
+];
+
+export const VOLLEYBALL_STAT_ROWS: StatRowSchema<GameStatsSide>[] = [
+  { key: "kills", labelKey: "stat_kills" },
+  { key: "digs", labelKey: "stat_digs" },
+  { key: "blocks", labelKey: "stat_blocks" },
+  { key: "aces", labelKey: "stat_aces" },
+];

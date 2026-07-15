@@ -11,10 +11,10 @@ function timeOf(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// Shared by football and basketball's game lists (detail pages, and now
-// the competition hub's Live/Upcoming tabs) — both sports share the same
-// `Game` shape, differing only in the WebSocket route prefix and detail
-// route segment.
+// Shared by every team sport's (football/basketball/baseball/volleyball)
+// game lists (detail pages, and now the competition hub's Live/Upcoming
+// tabs) — all four share the same `Game` shape, differing only in the
+// WebSocket route prefix and detail route segment.
 //
 // Row layout (home — score/time pill — away — status pill) and glass
 // treatment match the design brief's Matches list spec; status color/label
@@ -25,7 +25,7 @@ export default function GameCard({
   t,
 }: {
   game: Game;
-  sport: "football" | "basketball";
+  sport: "football" | "basketball" | "baseball" | "volleyball";
   t: (key: TKey) => string;
 }) {
   const [live, setLive] = useState(game);

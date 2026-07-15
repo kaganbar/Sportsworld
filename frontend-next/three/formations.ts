@@ -36,3 +36,19 @@ export const BASKETBALL_SHIFT_PER_SLOT = 3.2;
 
 // Tennis already anchors each player to their own baseline half (see
 // TennisScene's own PLAYER_BASE_Z) — no formation-slot table needed here.
+
+// Two decorative background infielders (pitcher/catcher/batter are
+// hand-positioned in BaseballScene, tied directly to the pitch/hit
+// choreography — these two are just ambient field presence, static
+// positions like BasketballScene's own idle bench player, not a
+// possession-driven formation shift the way football/basketball's
+// SHIFT_PER_SLOT is: real infielders don't collectively shift toward
+// whoever currently "has" the ball the way an offensive line does).
+export const BASEBALL_SLOTS: Slot[] = [
+  { x: -14, z: 32 }, // shortstop-ish
+  { x: 16, z: 24 }, // first-base-area
+];
+
+// Volleyball, like tennis, anchors each player to their own side of the net
+// (see VolleyballScene's own PLAYER_BASE_Z) rather than a formation-slot
+// table — no possession-shift concept applies to a 2-a-side rally either.

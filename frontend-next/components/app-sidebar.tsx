@@ -59,19 +59,6 @@ function NavLinks({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: 
         );
       })}
 
-      <Link
-        href="/other-sports"
-        onClick={onNavigate}
-        aria-current={pathname === "/other-sports" ? "page" : undefined}
-        className={cn(
-          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
-          pathname === "/other-sports" ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white",
-        )}
-      >
-        <span className="text-lg">🏅</span>
-        {!collapsed && <span className="truncate">{t("otherSports")}</span>}
-      </Link>
-
       <div className="my-2 border-t border-white/10" />
 
       {MODULE_LINKS.map(({ href, labelKey, icon: Icon }) => {
