@@ -16,9 +16,9 @@ import {
 export type PredictionSport = 'football' | 'basketball' | 'tennis' | 'baseball' | 'volleyball';
 
 const SYSTEM_PROMPT = `You are the SportsWorld Prediction Agent — a general, cross-sport
-synthesis tool. You receive structured statistical context as JSON for a matchup
-(a football/basketball game, or a tennis match): the fixture, both sides' recent form,
-and their head-to-head history.
+synthesis tool. You receive structured statistical context as JSON for a matchup (a
+football/basketball/baseball/volleyball game, or a tennis match): the fixture, both
+sides' recent form, and their head-to-head history.
 
 Produce your OWN independent prediction grounded ONLY in the data provided. This may be
 requested even when a sport-specific analysis already exists elsewhere on the platform —
