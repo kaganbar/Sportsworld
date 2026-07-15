@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Lang } from '../common/lang.decorator';
 
-export type SportKey = 'football' | 'basketball' | 'tennis';
+export type SportKey = 'football' | 'basketball' | 'tennis' | 'baseball' | 'volleyball';
 
 @Injectable()
 export class CompetitionsService {

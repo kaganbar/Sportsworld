@@ -48,6 +48,21 @@ const BASKETBALL: Seed[] = [
   { slug: 'world-cup', name: 'FIBA World Cup', nameHe: 'מונדיאל כדורסל', tier: 9, aliases: [] }, // covered by 'fiba' bucket above; kept for nav parity with the user's list
 ];
 
+const BASEBALL: Seed[] = [
+  { slug: 'mlb', name: 'MLB', nameHe: 'MLB', tier: 1, aliases: ['MLB', 'Major League Baseball'] },
+  { slug: 'npb', name: 'NPB', nameHe: 'NPB', tier: 2, aliases: ['NPB', 'Nippon Professional Baseball'] },
+  { slug: 'kbo', name: 'KBO League', nameHe: 'ליגת KBO', tier: 3, aliases: ['KBO', 'KBO League'] },
+  { slug: 'world-baseball-classic', name: 'World Baseball Classic', nameHe: 'קלאסיק הבייסבול העולמי', tier: 4, aliases: ['World Baseball Classic', 'WBC'] },
+  { slug: 'national-leagues', name: 'National Leagues', nameHe: 'ליגות מקומיות', tier: 5, aliases: ['LMB', 'CPBL', 'Serie del Caribe', 'Caribbean Series'] },
+];
+
+const VOLLEYBALL: Seed[] = [
+  { slug: 'fivb-nations-league', name: 'FIVB Nations League', nameHe: 'ליגת האומות FIVB', tier: 1, aliases: ['FIVB Nations League', 'Volleyball Nations League', 'VNL'] },
+  { slug: 'fivb-world-championship', name: 'FIVB World Championship', nameHe: 'אליפות העולם FIVB', tier: 2, aliases: ['FIVB World Championship', 'Volleyball World Championship'] },
+  { slug: 'olympic-volleyball', name: 'Olympic Volleyball', nameHe: 'כדורעף אולימפי', tier: 3, aliases: ['Olympic Volleyball'] },
+  { slug: 'national-leagues', name: 'National Leagues', nameHe: 'ליגות מקומיות', tier: 4, aliases: ['SuperLega', 'PlusLiga', 'Serie A1'] },
+];
+
 const TENNIS: Seed[] = [
   { slug: 'atp-tour', name: 'ATP Tour', nameHe: 'טור ATP', tier: 1, aliases: ['ATP'] },
   { slug: 'wta-tour', name: 'WTA Tour', nameHe: 'טור WTA', tier: 2, aliases: ['WTA'] },
@@ -85,7 +100,9 @@ async function main() {
   await seedSport('football', FOOTBALL);
   await seedSport('basketball', BASKETBALL);
   await seedSport('tennis', TENNIS);
-  console.log('Seeded competitions for football, basketball, tennis (+ "other" bucket each).');
+  await seedSport('baseball', BASEBALL);
+  await seedSport('volleyball', VOLLEYBALL);
+  console.log('Seeded competitions for football, basketball, tennis, baseball, volleyball (+ "other" bucket each).');
 }
 
 main()

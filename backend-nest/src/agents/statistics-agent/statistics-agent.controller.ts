@@ -3,7 +3,7 @@ import { StatisticsAgentService, StatsSport } from './statistics-agent.service';
 import { LangParam, Lang } from '../../common/lang.decorator';
 import { AnalysisUnavailableError, RateLimitExceededError } from '../common/agent-caller.service';
 
-const VALID_SPORTS: StatsSport[] = ['football', 'basketball', 'tennis'];
+const VALID_SPORTS: StatsSport[] = ['football', 'basketball', 'tennis', 'baseball', 'volleyball'];
 
 @Controller('agents/statistics-agent')
 export class StatisticsAgentController {

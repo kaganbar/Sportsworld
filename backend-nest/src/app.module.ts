@@ -10,9 +10,13 @@ import { StatsModule } from './stats/stats.module';
 import { GamesModule } from './games/games.module';
 import { PlayersModule } from './players/players.module';
 import { BasketballModule } from './basketball/basketball.module';
+import { BaseballModule } from './baseball/baseball.module';
+import { VolleyballModule } from './volleyball/volleyball.module';
 import { TennisModule } from './tennis/tennis.module';
 import { FootballAgentModule } from './agents/football-agent/football-agent.module';
 import { BasketballAgentModule } from './agents/basketball-agent/basketball-agent.module';
+import { BaseballAgentModule } from './agents/baseball-agent/baseball-agent.module';
+import { VolleyballAgentModule } from './agents/volleyball-agent/volleyball-agent.module';
 import { TennisAgentModule } from './agents/tennis-agent/tennis-agent.module';
 import { GeneralSportsAgentModule } from './agents/general-sports-agent/general-sports-agent.module';
 import { TransferAgentModule } from './agents/transfer-agent/transfer-agent.module';
@@ -42,9 +46,13 @@ import { StandingsModule } from './standings/standings.module';
     GamesModule,
     PlayersModule,
     BasketballModule,
+    BaseballModule,
+    VolleyballModule,
     TennisModule,
     FootballAgentModule,
     BasketballAgentModule,
+    BaseballAgentModule,
+    VolleyballAgentModule,
     TennisAgentModule,
     GeneralSportsAgentModule,
     TransferAgentModule,

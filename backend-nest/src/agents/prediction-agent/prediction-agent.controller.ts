@@ -3,7 +3,7 @@ import { PredictionAgentService, PredictionSport } from './prediction-agent.serv
 import { LangParam, Lang } from '../../common/lang.decorator';
 import { AnalysisUnavailableError, RateLimitExceededError } from '../common/agent-caller.service';
 
-const VALID_SPORTS: PredictionSport[] = ['football', 'basketball', 'tennis'];
+const VALID_SPORTS: PredictionSport[] = ['football', 'basketball', 'tennis', 'baseball', 'volleyball'];
 
 @Controller('agents/prediction-agent')
 export class PredictionAgentController {

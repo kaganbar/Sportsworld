@@ -6,7 +6,7 @@ import { Lang } from '../../common/lang.decorator';
 import { AgentCallerService } from '../common/agent-caller.service';
 import { StatisticsAnalysisOutputSchema, StatisticsAnalysisOutput } from './statistics-agent.schema';
 
-export type StatsSport = 'football' | 'basketball' | 'tennis';
+export type StatsSport = 'football' | 'basketball' | 'tennis' | 'baseball' | 'volleyball';
 
 const SYSTEM_PROMPT = `You are the SportsWorld Statistics Agent. You receive structured
 real statistical data as JSON for a single team or player: their recent results and

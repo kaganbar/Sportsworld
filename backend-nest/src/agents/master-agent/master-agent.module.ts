@@ -3,6 +3,8 @@ import { MasterAgentController } from './master-agent.controller';
 import { MasterAgentService } from './master-agent.service';
 import { FootballAgentModule } from '../football-agent/football-agent.module';
 import { BasketballAgentModule } from '../basketball-agent/basketball-agent.module';
+import { BaseballAgentModule } from '../baseball-agent/baseball-agent.module';
+import { VolleyballAgentModule } from '../volleyball-agent/volleyball-agent.module';
 import { TennisAgentModule } from '../tennis-agent/tennis-agent.module';
 import { GeneralSportsAgentModule } from '../general-sports-agent/general-sports-agent.module';
 import { TransferAgentModule } from '../transfer-agent/transfer-agent.module';
@@ -17,6 +19,8 @@ import { PredictionAgentModule } from '../prediction-agent/prediction-agent.modu
   imports: [
     FootballAgentModule,
     BasketballAgentModule,
+    BaseballAgentModule,
+    VolleyballAgentModule,
     TennisAgentModule,
     GeneralSportsAgentModule,
     TransferAgentModule,

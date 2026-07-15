@@ -15,7 +15,7 @@ export class GamesController {
     @Query('competition') competition: string | undefined,
     @LangParam() lang: Lang,
   ) {
-    return this.games.gamesToday(sport as 'football' | 'basketball', lang, competition);
+    return this.games.gamesToday(sport as 'football' | 'basketball' | 'baseball' | 'volleyball', lang, competition);
   }
 
   @Get(':id')

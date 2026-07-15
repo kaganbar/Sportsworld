@@ -13,7 +13,7 @@ import {
   PredictionTwoWay,
 } from './prediction-agent.schema';
 
-export type PredictionSport = 'football' | 'basketball' | 'tennis';
+export type PredictionSport = 'football' | 'basketball' | 'tennis' | 'baseball' | 'volleyball';
 
 const SYSTEM_PROMPT = `You are the SportsWorld Prediction Agent — a general, cross-sport
 synthesis tool. You receive structured statistical context as JSON for a matchup

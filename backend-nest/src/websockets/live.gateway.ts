@@ -6,7 +6,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { RedisService } from '../redis/redis.service';
 import { GAME_TICKS_CHANNEL } from '../redis/redis-channels';
 
-const GAME_PATH = /^\/ws\/games\/(football|basketball)\/(\d+)\/?$/;
+const GAME_PATH = /^\/ws\/games\/(football|basketball|baseball|volleyball)\/(\d+)\/?$/;
 const TENNIS_PATH = /^\/ws\/tennis\/(\d+)\/?$/;
 
 function keyForUrl(url: string): string | null {

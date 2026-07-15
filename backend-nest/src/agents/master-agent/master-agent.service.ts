@@ -16,6 +16,8 @@ import {
 } from '../common/agent-caller.service';
 import { FootballAgentService } from '../football-agent/football-agent.service';
 import { BasketballAgentService } from '../basketball-agent/basketball-agent.service';
+import { BaseballAgentService } from '../baseball-agent/baseball-agent.service';
+import { VolleyballAgentService } from '../volleyball-agent/volleyball-agent.service';
 import { TennisAgentService } from '../tennis-agent/tennis-agent.service';
 import { GeneralSportsAgentService } from '../general-sports-agent/general-sports-agent.service';
 import { TransferAgentService } from '../transfer-agent/transfer-agent.service';
@@ -36,20 +38,22 @@ then synthesizing a single coherent report. You may call several tools, one, or 
 general knowledge already answers the question.
 
 Tool guide:
-- get_football_analysis(game_id) / get_basketball_analysis(game_id) / get_tennis_analysis(match_id):
-  the platform's existing cached AI match analysis for one specific game/match, including
-  a win-probability breakdown. Use these for a quick, single-game read.
+- get_football_analysis(game_id) / get_basketball_analysis(game_id) /
+  get_baseball_analysis(game_id) / get_volleyball_analysis(game_id) /
+  get_tennis_analysis(match_id): the platform's existing cached AI match analysis for one
+  specific game/match, including a win-probability breakdown. Use these for a quick,
+  single-game read.
 - get_prediction(sport, subject_id): an independent, cross-sport prediction tool. It can be
-  called for ANY sport, including football/basketball/tennis, even when a per-sport analysis
-  already exists — it recomputes a fresh synthesis rather than reusing that analysis. Use it
-  when the user wants a cross-referenced second take, not just the platform's own quick read.
-  Its own take may agree or disagree with the per-sport analysis — that's fine to note.
+  called for ANY sport on this platform, even when a per-sport analysis already exists — it
+  recomputes a fresh synthesis rather than reusing that analysis. Use it when the user wants
+  a cross-referenced second take, not just the platform's own quick read. Its own take may
+  agree or disagree with the per-sport analysis — that's fine to note.
 - get_statistics(sport, subject_id): a real-data-only statistical digest (recent form,
   head-to-head, goals/wins/losses) for ONE team or player. There is no advanced metric data
   (no xG, no possession, no serve stats) — never claim there is.
 - ask_general_sports(question): general sports knowledge (rules, history, commentary) for
-  sports with no live fixture data on this platform (e.g. baseball, volleyball), or any
-  question not tied to a specific game. Answered from general knowledge, not live data.
+  sports with no live fixture data on this platform, or any question not tied to a specific
+  game. Answered from general knowledge, not live data.
 - get_transfer_stories(): recent grouped transfer rumor/signing stories, each with a
   credibility-weighted probability estimate.
 - get_news_clusters(): recent deduped, clustered, summarized sports news stories.
@@ -79,6 +83,8 @@ export class MasterAgentService {
     private readonly redis: RedisService,
     private readonly football: FootballAgentService,
     private readonly basketball: BasketballAgentService,
+    private readonly baseball: BaseballAgentService,
+    private readonly volleyball: VolleyballAgentService,
     private readonly tennis: TennisAgentService,
     private readonly generalSports: GeneralSportsAgentService,
     private readonly transferAgent: TransferAgentService,
@@ -107,6 +113,18 @@ export class MasterAgentService {
         run: async ({ game_id }) => JSON.stringify(await this.basketball.getOrCreateAnalysis(game_id, lang)),
       }),
       betaZodTool({
+        name: 'get_baseball_analysis',
+        description: 'Get the cached AI match analysis (summary, key factors, win probability) for a baseball game by its game ID.',
+        inputSchema: z.object({ game_id: z.number().int() }),
+        run: async ({ game_id }) => JSON.stringify(await this.baseball.getOrCreateAnalysis(game_id, lang)),
+      }),
+      betaZodTool({
+        name: 'get_volleyball_analysis',
+        description: 'Get the cached AI match analysis (summary, key factors, win probability) for a volleyball game by its game ID.',
+        inputSchema: z.object({ game_id: z.number().int() }),
+        run: async ({ game_id }) => JSON.stringify(await this.volleyball.getOrCreateAnalysis(game_id, lang)),
+      }),
+      betaZodTool({
         name: 'get_tennis_analysis',
         description: 'Get the cached AI match analysis (summary, key factors, win probability) for a tennis match by its match ID.',
         inputSchema: z.object({ match_id: z.number().int() }),
@@ -132,15 +150,15 @@ export class MasterAgentService {
       }),
       betaZodTool({
         name: 'get_statistics',
-        description: 'Get a real-data-only statistical digest (recent form, head-to-head, goals/wins/losses) for one football/basketball team or tennis player. sport must be "football", "basketball", or "tennis"; subject_id is a team ID for football/basketball or a player ID for tennis.',
-        inputSchema: z.object({ sport: z.enum(['football', 'basketball', 'tennis']), subject_id: z.number().int() }),
+        description: 'Get a real-data-only statistical digest (recent form, head-to-head, goals/wins/losses) for one team or tennis player. sport must be "football", "basketball", "baseball", "volleyball", or "tennis"; subject_id is a team ID for the team sports or a player ID for tennis.',
+        inputSchema: z.object({ sport: z.enum(['football', 'basketball', 'baseball', 'volleyball', 'tennis']), subject_id: z.number().int() }),
         run: async ({ sport, subject_id }) =>
           JSON.stringify(await this.statisticsAgent.getOrCreateStatistics(sport, subject_id, lang)),
       }),
       betaZodTool({
         name: 'get_prediction',
-        description: 'Get an independent cross-sport prediction for a matchup. sport must be "football", "basketball", or "tennis"; subject_id is a game ID for football/basketball or a tennis match ID for tennis. Can be called even when a per-sport analysis already exists.',
-        inputSchema: z.object({ sport: z.enum(['football', 'basketball', 'tennis']), subject_id: z.number().int() }),
+        description: 'Get an independent cross-sport prediction for a matchup. sport must be "football", "basketball", "baseball", "volleyball", or "tennis"; subject_id is a game ID for the team sports or a tennis match ID for tennis. Can be called even when a per-sport analysis already exists.',
+        inputSchema: z.object({ sport: z.enum(['football', 'basketball', 'baseball', 'volleyball', 'tennis']), subject_id: z.number().int() }),
         run: async ({ sport, subject_id }) =>
           JSON.stringify(await this.predictionAgent.getOrCreatePrediction(sport, subject_id, lang)),
       }),

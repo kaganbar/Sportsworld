@@ -59,7 +59,7 @@ export class GamesService {
     };
   }
 
-  async gamesToday(sport: 'football' | 'basketball', lang: Lang, competition?: string) {
+  async gamesToday(sport: 'football' | 'basketball' | 'baseball' | 'volleyball', lang: Lang, competition?: string) {
     const cacheKey = `games:today:${sport}:${competition ?? 'all'}:${lang}`;
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);

@@ -46,6 +46,20 @@ function basketballSeasonStats(position: string) {
   if (position === 'PF') return { ppg: randFloat(9, 18), rpg: randFloat(6, 10.5), apg: randFloat(1, 3.5) };
   return { ppg: randFloat(8, 17), rpg: randFloat(8, 13.5), apg: randFloat(1, 3) };
 }
+function baseballSeasonStats(position: string) {
+  if (position === 'P') return { avg: randFloat(0.05, 0.18), homeRuns: randint(0, 1), rbi: randint(0, 3) };
+  if (position === 'C') return { avg: randFloat(0.235, 0.275), homeRuns: randint(8, 18), rbi: randint(40, 70) };
+  if (position === 'IF') return { avg: randFloat(0.24, 0.29), homeRuns: randint(10, 25), rbi: randint(45, 85) };
+  if (position === 'OF') return { avg: randFloat(0.25, 0.31), homeRuns: randint(15, 35), rbi: randint(55, 95) };
+  return { avg: randFloat(0.24, 0.28), homeRuns: randint(10, 22), rbi: randint(40, 75) }; // DH
+}
+function volleyballSeasonStats(position: string) {
+  if (position === 'S') return { kills: randFloat(0.5, 2.5), digs: randFloat(2, 4), blocks: randFloat(0.2, 0.6) };
+  if (position === 'OH') return { kills: randFloat(3, 5.5), digs: randFloat(2, 4.5), blocks: randFloat(0.4, 0.9) };
+  if (position === 'MB') return { kills: randFloat(2, 3.8), digs: randFloat(0.4, 1.2), blocks: randFloat(0.9, 1.6) };
+  if (position === 'OPP') return { kills: randFloat(3.5, 6), digs: randFloat(1, 2.5), blocks: randFloat(0.5, 1) };
+  return { kills: randFloat(0, 0.3), digs: randFloat(3.5, 6), blocks: randFloat(0, 0.1) }; // L (libero)
+}
 
 const FOOTBALL_TEAMS: [string, string, string, string][] = [
   ['Real Madrid', 'RMA', 'Spain', '#FEBE10'],
@@ -92,6 +106,34 @@ const BASKETBALL_FIXTURES: [string, string, string, string, number, string][] = 
   ['GSW', 'MIA', 'NBA', 'Chase Center', 22, 'live'],
 ];
 
+const BASEBALL_TEAMS: [string, string, string, string][] = [
+  ['New York Yankees', 'NYY', 'USA', '#0C2340'],
+  ['Los Angeles Dodgers', 'LAD', 'USA', '#005A9C'],
+  ['Boston Red Sox', 'BOS', 'USA', '#BD3039'],
+  ['Houston Astros', 'HOU', 'USA', '#EB6E1F'],
+];
+const BASEBALL_SQUAD_TEMPLATE = [
+  ...Array(4).fill('P'), ...Array(2).fill('C'), ...Array(4).fill('IF'), ...Array(2).fill('OF'), ...Array(1).fill('DH'),
+];
+const BASEBALL_FIXTURES: [string, string, string, string, number, string][] = [
+  ['NYY', 'BOS', 'MLB', 'Yankee Stadium', 19, 'scheduled'],
+  ['LAD', 'HOU', 'MLB', 'Dodger Stadium', 22, 'live'],
+];
+
+const VOLLEYBALL_TEAMS: [string, string, string, string][] = [
+  ['Italy', 'ITA', 'Italy', '#008C45'],
+  ['Poland', 'POL', 'Poland', '#DC143C'],
+  ['Brazil', 'BRA', 'Brazil', '#FFDF00'],
+  ['USA', 'USA', 'USA', '#B31942'],
+];
+const VOLLEYBALL_SQUAD_TEMPLATE = [
+  ...Array(2).fill('S'), ...Array(4).fill('OH'), ...Array(3).fill('MB'), ...Array(2).fill('OPP'), ...Array(1).fill('L'),
+];
+const VOLLEYBALL_FIXTURES: [string, string, string, string, number, string][] = [
+  ['ITA', 'POL', 'FIVB Nations League', 'Unipol Arena', 18, 'scheduled'],
+  ['BRA', 'USA', 'FIVB Nations League', 'Ginasio do Ibirapuera', 20, 'live'],
+];
+
 const TENNIS_PLAYERS: [string, string, 'atp' | 'wta', number][] = [
   ['Novak Djokovic', 'Serbia', 'atp', 1],
   ['Carlos Alcaraz', 'Spain', 'atp', 2],
@@ -118,6 +160,14 @@ const TRANSLATIONS_HE: [string, string, string][] = [
   ['Boston Celtics', 'בוסטון סלטיקס', 'team'],
   ['Golden State Warriors', 'גולדן סטייט ווריורס', 'team'],
   ['Miami Heat', 'מיאמי היט', 'team'],
+  ['New York Yankees', "ניו יורק יאנקיז", 'team'],
+  ['Los Angeles Dodgers', "לוס אנג'לס דודג'רס", 'team'],
+  ['Boston Red Sox', 'בוסטון רד סוקס', 'team'],
+  ['Houston Astros', 'יוסטון אסטרוס', 'team'],
+  ['Italy', 'איטליה', 'team'],
+  ['Poland', 'פולין', 'team'],
+  ['Brazil', 'ברזיל', 'team'],
+  ['USA', 'ארה"ב', 'team'],
   ['Novak Djokovic', "נובאק ג'וקוביץ'", 'player'],
   ['Carlos Alcaraz', 'קרלוס אלקראס', 'player'],
   ['Jannik Sinner', 'יאניק סינר', 'player'],
@@ -133,12 +183,18 @@ const TRANSLATIONS_HE: [string, string, string][] = [
   ['League', 'ליגה', 'competition'],
   ['Cup', 'גביע', 'competition'],
   ['Wimbledon', 'וימבלדון', 'competition'],
+  ['MLB', 'MLB', 'competition'],
+  ['FIVB Nations League', 'ליגת האומות FIVB', 'competition'],
   ['Santiago Bernabeu', 'סנטיאגו ברנבאו', 'venue'],
   ['Etihad Stadium', 'אצטדיון האיתיחאד', 'venue'],
   ['Allianz Arena', 'אצטדיון אליאנץ', 'venue'],
   ['Crypto.com Arena', 'אצטדיון קריפטו.קום', 'venue'],
   ['Chase Center', "צ'ייס סנטר", 'venue'],
   ['Centre Court', 'המגרש המרכזי', 'venue'],
+  ['Yankee Stadium', 'אצטדיון יאנקי', 'venue'],
+  ['Dodger Stadium', "אצטדיון דודג'רס", 'venue'],
+  ['Unipol Arena', 'אצטדיון יוניפול', 'venue'],
+  ['Ginasio do Ibirapuera', 'גינסיו דו איבירפוארה', 'venue'],
 ];
 
 function todayAt(hour: number): Date {
@@ -154,6 +210,8 @@ async function wipe() {
   await prisma.tennisPlayer.deleteMany();
   await prisma.lineup.deleteMany();
   await prisma.quarterScore.deleteMany();
+  await prisma.inningScore.deleteMany();
+  await prisma.setScore.deleteMany();
   await prisma.game.deleteMany();
   await prisma.matchResult.deleteMany();
   await prisma.injury.deleteMany();
@@ -162,7 +220,16 @@ async function wipe() {
   await prisma.nameTranslation.deleteMany();
 }
 
-async function createSquad(teamId: number, template: string[], sport: 'football' | 'basketball') {
+type TeamSport = 'football' | 'basketball' | 'baseball' | 'volleyball';
+
+function seasonStatsFor(sport: TeamSport, position: string) {
+  if (sport === 'football') return footballSeasonStats(position);
+  if (sport === 'basketball') return basketballSeasonStats(position);
+  if (sport === 'baseball') return baseballSeasonStats(position);
+  return volleyballSeasonStats(position);
+}
+
+async function createSquad(teamId: number, template: string[], sport: TeamSport) {
   const used = new Set<string>();
   const players = [];
   for (let i = 0; i < template.length; i++) {
@@ -171,7 +238,7 @@ async function createSquad(teamId: number, template: string[], sport: 'football'
       name = `${choice(FIRST_NAMES)} ${choice(LAST_NAMES)}`;
     } while (used.has(name));
     used.add(name);
-    const seasonStats = sport === 'football' ? footballSeasonStats(template[i]) : basketballSeasonStats(template[i]);
+    const seasonStats = seasonStatsFor(sport, template[i]);
     players.push(
       await prisma.player.create({
         data: { teamId, name, position: template[i], shirtNumber: i + 1, seasonStats },
@@ -181,8 +248,26 @@ async function createSquad(teamId: number, template: string[], sport: 'football'
   return players;
 }
 
+// Single-league competition label used for every H2H/general-form result in
+// sports that don't vary competitions the way football does (basketball's
+// 'NBA', baseball's 'MLB', volleyball's 'FIVB Nations League').
+function singleLeagueLabel(sport: TeamSport): string {
+  if (sport === 'basketball') return 'NBA';
+  if (sport === 'baseball') return 'MLB';
+  return 'FIVB Nations League';
+}
+
+// First-N-available starters, in squad-template order — same simplification
+// basketball already uses (no real positional-balance logic), just with a
+// per-sport starter count (basketball 5, baseball 9, volleyball 6).
+function startersCountFor(sport: TeamSport): number {
+  if (sport === 'basketball') return 5;
+  if (sport === 'baseball') return 9;
+  return 6; // volleyball
+}
+
 async function seedTeamSport(
-  sport: 'football' | 'basketball',
+  sport: TeamSport,
   teamDefs: [string, string, string, string][],
   squadTemplate: string[],
   fixtures: [string, string, string, string, number, string][],
@@ -212,7 +297,7 @@ async function seedTeamSport(
       await prisma.matchResult.create({
         data: {
           date,
-          competition: sport === 'football' ? 'Friendly' : 'NBA',
+          competition: sport === 'football' ? 'Friendly' : singleLeagueLabel(sport),
           homeTeamId: teams[h2hHome].id,
           awayTeamId: teams[h2hAway].id,
           homeScore: randint(...scoreRange),
@@ -232,7 +317,7 @@ async function seedTeamSport(
       await prisma.matchResult.create({
         data: {
           date,
-          competition: sport === 'football' ? choice(['League', 'Cup', 'Champions League']) : 'NBA',
+          competition: sport === 'football' ? choice(['League', 'Cup', 'Champions League']) : singleLeagueLabel(sport),
           homeTeamId: teams[isHome ? short : opponent].id,
           awayTeamId: teams[isHome ? opponent : short].id,
           homeScore: randint(...scoreRange),
@@ -303,8 +388,9 @@ async function seedTeamSport(
           await prisma.lineup.create({ data: { gameId: game.id, teamId: teams[short].id, playerId: p.id, isStarting: false, position: p.position } });
         }
       } else {
-        const starters = available.slice(0, 5);
-        const bench = available.slice(5);
+        const startersCount = startersCountFor(sport);
+        const starters = available.slice(0, startersCount);
+        const bench = available.slice(startersCount);
         for (const p of starters) {
           await prisma.lineup.create({ data: { gameId: game.id, teamId: teams[short].id, playerId: p.id, isStarting: true, position: p.position } });
         }
@@ -332,6 +418,66 @@ async function seedTeamSport(
           stats: {
             home: { points: homeTotal, rebounds: randint(32, 48), assists: randint(16, 28), fgPct: randint(42, 52) },
             away: { points: awayTotal, rebounds: randint(30, 46), assists: randint(14, 26), fgPct: randint(40, 50) },
+          },
+        },
+      });
+    }
+
+    if (sport === 'baseball' && isLive) {
+      // A game in progress through inning 3-6 (not a full 9) — same "live,
+      // not yet finished" framing basketball's 3-of-4-quarters seed uses.
+      let homeTotal = 0;
+      let awayTotal = 0;
+      const inningsSoFar = randint(3, 6);
+      for (let inning = 1; inning <= inningsSoFar; inning++) {
+        const h = randint(0, 3);
+        const a = randint(0, 3);
+        homeTotal += h;
+        awayTotal += a;
+        await prisma.inningScore.create({ data: { gameId: game.id, inning, homeScore: h, awayScore: a } });
+      }
+      await prisma.game.update({
+        where: { id: game.id },
+        data: {
+          homeScore: homeTotal,
+          awayScore: awayTotal,
+          stats: {
+            home: { hits: randint(homeTotal, homeTotal + 8), runs: homeTotal, errors: randint(0, 2), walks: randint(0, 5) },
+            away: { hits: randint(awayTotal, awayTotal + 8), runs: awayTotal, errors: randint(0, 2), walks: randint(0, 5) },
+          },
+        },
+      });
+    }
+
+    if (sport === 'volleyball' && isLive) {
+      // 1-2 completed sets plus one in-progress set — mirrors seedTennis()'s
+      // live-match pattern (a set-based sport, closer to tennis than to
+      // basketball's fixed-period structure).
+      const completedSets = randint(1, 2);
+      let homeSetsWon = 0;
+      let awaySetsWon = 0;
+      for (let setNumber = 1; setNumber <= completedSets; setNumber++) {
+        const homeWinsSet = rng() < 0.5;
+        const winnerScore = 25;
+        const loserScore = randint(15, 23);
+        const h = homeWinsSet ? winnerScore : loserScore;
+        const a = homeWinsSet ? loserScore : winnerScore;
+        if (homeWinsSet) homeSetsWon++; else awaySetsWon++;
+        await prisma.setScore.create({ data: { gameId: game.id, setNumber, homeScore: h, awayScore: a } });
+      }
+      const inProgressH = randint(8, 20);
+      const inProgressA = randint(8, 20);
+      await prisma.setScore.create({
+        data: { gameId: game.id, setNumber: completedSets + 1, homeScore: inProgressH, awayScore: inProgressA },
+      });
+      await prisma.game.update({
+        where: { id: game.id },
+        data: {
+          homeScore: homeSetsWon,
+          awayScore: awaySetsWon,
+          stats: {
+            home: { kills: randint(30, 55), digs: randint(25, 45), blocks: randint(4, 12), aces: randint(2, 9) },
+            away: { kills: randint(28, 52), digs: randint(24, 42), blocks: randint(3, 11), aces: randint(2, 8) },
           },
         },
       });
@@ -436,6 +582,8 @@ async function main() {
   await wipe();
   await seedTeamSport('football', FOOTBALL_TEAMS, FOOTBALL_SQUAD_TEMPLATE, FOOTBALL_FIXTURES, [0, 4]);
   await seedTeamSport('basketball', BASKETBALL_TEAMS, BASKETBALL_SQUAD_TEMPLATE, BASKETBALL_FIXTURES, [95, 125]);
+  await seedTeamSport('baseball', BASEBALL_TEAMS, BASEBALL_SQUAD_TEMPLATE, BASEBALL_FIXTURES, [1, 9]);
+  await seedTeamSport('volleyball', VOLLEYBALL_TEAMS, VOLLEYBALL_SQUAD_TEMPLATE, VOLLEYBALL_FIXTURES, [60, 100]);
   await seedTennis();
   await seedTranslations();
 
