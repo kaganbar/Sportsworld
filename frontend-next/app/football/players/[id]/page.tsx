@@ -25,7 +25,7 @@ export default function FootballPlayerProfile({ params }: { params: { id: string
       sport="football"
       breadcrumbExtra={data ? [{ label: data.name, href: `/football/players/${id}` }] : []}
     >
-      {error && <p className="rounded-md bg-red-950/50 p-3 text-sm text-red-200">{error}</p>}
+      {error && <p role="alert" className="rounded-md bg-red-950/50 p-3 text-sm text-red-200">{error}</p>}
       {!data && !error && <Skeleton className="mx-auto h-80 w-full max-w-[520px] rounded-[28px]" />}
       {data && (
         <PlayerProfileCard

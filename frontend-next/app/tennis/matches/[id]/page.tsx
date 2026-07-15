@@ -108,7 +108,7 @@ export default function TennisMatchDetail({ params }: { params: { id: string } }
         data ? [{ label: `${data.match.player1.name} vs ${data.match.player2.name}`, href: `/tennis/matches/${id}` }] : []
       }
     >
-      {error && <p className="rounded-md bg-red-950/50 p-3 text-sm text-red-200">{t("loadErrorGame")}: {error}</p>}
+      {error && <p role="alert" className="rounded-md bg-red-950/50 p-3 text-sm text-red-200">{t("loadErrorGame")}: {error}</p>}
       {!data && !error && <Skeleton className="h-24 w-full" />}
       {data && (
         <>

@@ -26,7 +26,7 @@ export default function CompetitionPicker({ sport, basePath }: { sport: ApiSport
   return (
     <div>
       <h2 className="mb-4 text-xl font-bold leading-snug text-white">{t("selectCompetition")}</h2>
-      {error && <p className="rounded-md bg-red-950/50 p-3 text-sm text-red-200">{error}</p>}
+      {error && <p role="alert" className="rounded-md bg-red-950/50 p-3 text-sm text-red-200">{error}</p>}
       {!competitions && !error && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (

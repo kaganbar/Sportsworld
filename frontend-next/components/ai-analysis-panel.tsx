@@ -81,7 +81,7 @@ export default function AiAnalysisPanel<T extends AgentAnalysisBase>({
           <Skeleton className="h-4 w-full" />
         </div>
       )}
-      {error && <p className="text-sm text-white/60">{error}</p>}
+      {error && <p role="alert" className="text-sm text-white/60">{error}</p>}
       {analysis && (
         <>
           <div className="mb-1.5 flex items-center gap-3.5">
