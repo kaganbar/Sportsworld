@@ -201,21 +201,21 @@ export default function BaseballGameDetail({ params }: { params: { id: string } 
                     <table className="w-full text-sm" dir="ltr">
                       <thead>
                         <tr>
-                          <th />
+                          <th scope="col" />
                           {data.innings.map((i) => (
-                            <th key={i.inning} className="px-2 py-1 text-center text-muted-foreground">{i.inning}</th>
+                            <th key={i.inning} scope="col" className="px-2 py-1 text-center text-muted-foreground">{i.inning}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td className="pe-3 font-medium">{data.game.home_team.short_name}</td>
+                          <th scope="row" className="pe-3 text-start font-medium">{data.game.home_team.short_name}</th>
                           {data.innings.map((i) => (
                             <td key={i.inning} className="px-2 py-1 text-center">{i.home_score}</td>
                           ))}
                         </tr>
                         <tr>
-                          <td className="pe-3 font-medium">{data.game.away_team.short_name}</td>
+                          <th scope="row" className="pe-3 text-start font-medium">{data.game.away_team.short_name}</th>
                           {data.innings.map((i) => (
                             <td key={i.inning} className="px-2 py-1 text-center">{i.away_score}</td>
                           ))}

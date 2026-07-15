@@ -201,21 +201,21 @@ export default function VolleyballGameDetail({ params }: { params: { id: string 
                     <table className="w-full text-sm" dir="ltr">
                       <thead>
                         <tr>
-                          <th />
+                          <th scope="col" />
                           {data.sets.map((s) => (
-                            <th key={s.set_number} className="px-2 py-1 text-center text-muted-foreground">{s.set_number}</th>
+                            <th key={s.set_number} scope="col" className="px-2 py-1 text-center text-muted-foreground">{s.set_number}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td className="pe-3 font-medium">{data.game.home_team.short_name}</td>
+                          <th scope="row" className="pe-3 text-start font-medium">{data.game.home_team.short_name}</th>
                           {data.sets.map((s) => (
                             <td key={s.set_number} className="px-2 py-1 text-center">{s.home_score}</td>
                           ))}
                         </tr>
                         <tr>
-                          <td className="pe-3 font-medium">{data.game.away_team.short_name}</td>
+                          <th scope="row" className="pe-3 text-start font-medium">{data.game.away_team.short_name}</th>
                           {data.sets.map((s) => (
                             <td key={s.set_number} className="px-2 py-1 text-center">{s.away_score}</td>
                           ))}

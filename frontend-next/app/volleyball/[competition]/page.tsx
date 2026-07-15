@@ -91,19 +91,19 @@ export default function VolleyballCompetitionHub({ params }: { params: { competi
                 <table className="w-full text-sm" dir="ltr">
                   <thead>
                     <tr className="text-white/60">
-                      <th className="px-2 py-1 text-start">#</th>
-                      <th className="px-2 py-1 text-start">Team</th>
-                      <th className="px-2 py-1">P</th>
-                      <th className="px-2 py-1">{t("winsAbbr")}</th>
-                      <th className="px-2 py-1">{t("lossesAbbr")}</th>
-                      <th className="px-2 py-1">Pts</th>
+                      <th scope="col" className="px-2 py-1 text-start">#</th>
+                      <th scope="col" className="px-2 py-1 text-start">Team</th>
+                      <th scope="col" className="px-2 py-1">P</th>
+                      <th scope="col" className="px-2 py-1">{t("winsAbbr")}</th>
+                      <th scope="col" className="px-2 py-1">{t("lossesAbbr")}</th>
+                      <th scope="col" className="px-2 py-1">Pts</th>
                     </tr>
                   </thead>
                   <tbody>
                     {standings.map((row, i) => (
                       <tr key={row.team_id} className="border-t border-white/10">
                         <td className="px-2 py-1">{i + 1}</td>
-                        <td className="px-2 py-1 text-start font-medium">{row.team_name}</td>
+                        <th scope="row" className="px-2 py-1 text-start font-medium">{row.team_name}</th>
                         <td className="px-2 py-1 text-center">{row.played}</td>
                         <td className="px-2 py-1 text-center">{row.wins}</td>
                         <td className="px-2 py-1 text-center">{row.losses}</td>

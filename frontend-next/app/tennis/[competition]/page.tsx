@@ -95,16 +95,16 @@ export default function TennisCompetitionHub({ params }: { params: { competition
                   <table className="w-full text-sm" dir="ltr">
                     <thead>
                       <tr className="text-white/60">
-                        <th className="px-2 py-1 text-start">#</th>
-                        <th className="px-2 py-1 text-start">Player</th>
-                        <th className="px-2 py-1 text-start">Country</th>
+                        <th scope="col" className="px-2 py-1 text-start">#</th>
+                        <th scope="col" className="px-2 py-1 text-start">Player</th>
+                        <th scope="col" className="px-2 py-1 text-start">Country</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rankings.map((p) => (
                         <tr key={p.id} className="border-t border-white/10">
                           <td className="px-2 py-1">{p.ranking}</td>
-                          <td className="px-2 py-1 text-start font-medium">{p.name}</td>
+                          <th scope="row" className="px-2 py-1 text-start font-medium">{p.name}</th>
                           <td className="px-2 py-1 text-start">{p.country}</td>
                         </tr>
                       ))}
