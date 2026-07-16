@@ -1,9 +1,10 @@
-import { BadRequestException, Body, Controller, HttpException, HttpStatus, Post, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post, UseFilters } from '@nestjs/common';
 import { MasterAgentService } from './master-agent.service';
 import { LangParam, Lang } from '../../common/lang.decorator';
-import { AnalysisUnavailableError, RateLimitExceededError } from '../common/agent-caller.service';
+import { AgentErrorFilter } from '../common/agent-error.filter';
 
 @Controller('agents/master-agent')
+@UseFilters(AgentErrorFilter)
 export class MasterAgentController {
   constructor(private readonly masterAgent: MasterAgentService) {}
 
@@ -13,16 +14,6 @@ export class MasterAgentController {
     if (!query) {
       throw new BadRequestException('query is required');
     }
-    try {
-      return await this.masterAgent.answerQuery(query, lang);
-    } catch (err) {
-      if (err instanceof RateLimitExceededError) {
-        throw new HttpException(err.message, HttpStatus.TOO_MANY_REQUESTS);
-      }
-      if (err instanceof AnalysisUnavailableError) {
-        throw new ServiceUnavailableException(err.message);
-      }
-      throw err;
-    }
+    return this.masterAgent.answerQuery(query, lang);
   }
 }
