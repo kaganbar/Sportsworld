@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeftRight,
@@ -85,11 +85,27 @@ function NavLinks({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: 
 
 export function AppSidebar() {
   const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebar();
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const pathname = usePathname();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   // Close the mobile drawer automatically on navigation.
   useEffect(() => setMobileOpen(false), [pathname, setMobileOpen]);
+
+  // The drawer is a real modal overlay (backdrop + slide-over), so it needs
+  // the two behaviors every modal is expected to have: Escape closes it,
+  // and focus moves into it on open (here, straight to the close button —
+  // the first and most useful stop) rather than staying on the now-hidden
+  // trigger button behind the backdrop.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    closeButtonRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen, setMobileOpen]);
 
   // Collapse-toggle chevron must flip with reading direction — "collapse
   // toward the edge" points opposite ways in RTL vs LTR.
@@ -158,6 +174,9 @@ export function AppSidebar() {
             />
             <motion.aside
               key="drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("navigationMenu")}
               initial={{ x: rtl ? "100%" : "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: rtl ? "100%" : "-100%" }}
@@ -169,9 +188,10 @@ export function AppSidebar() {
                   SportsWorld
                 </Link>
                 <button
+                  ref={closeButtonRef}
                   type="button"
                   onClick={() => setMobileOpen(false)}
-                  aria-label="Close menu"
+                  aria-label={t("closeMenu")}
                   className="rounded-md p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
                 >
                   <X className="h-4 w-4" />
@@ -196,12 +216,13 @@ export function AppSidebar() {
 // instead of a slim top bar).
 export function MobileTopBar() {
   const { setMobileOpen } = useSidebar();
+  const { t } = useLang();
   return (
     <div className="dark sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-neutral-950/90 px-4 py-3 backdrop-blur md:hidden">
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        aria-label="Open menu"
+        aria-label={t("openMenu")}
         className="rounded-md p-1.5 text-white/80 transition hover:bg-white/10 hover:text-white"
       >
         <Menu className="h-5 w-5" />
