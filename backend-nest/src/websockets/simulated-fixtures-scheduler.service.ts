@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { CompetitionsService } from '../competitions/competitions.service';
 
 // Same hourly cadence as News/Transfer Agent's own scheduler pattern.
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
@@ -21,7 +22,10 @@ const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 export class SimulatedFixturesSchedulerService implements OnApplicationBootstrap {
   private readonly logger = new Logger(SimulatedFixturesSchedulerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly competitions: CompetitionsService,
+  ) {}
 
   onApplicationBootstrap() {
     this.run();
@@ -52,6 +56,15 @@ export class SimulatedFixturesSchedulerService implements OnApplicationBootstrap
     const teams = await this.prisma.team.findMany({ where: { sport } });
     if (teams.length < 2) return; // nothing seeded to schedule between
 
+    // Resolved once per sport, not per game — the real scraper's ingestion
+    // path (normalize.service.ts) always sets competitionId at creation
+    // time; skipping this here would leave every game invisible to the
+    // competition-filtered routes (GamesService.gamesToday's `competition`
+    // query param filters on Game.competitionId, not the raw string) until
+    // someone manually ran `npm run backfill:competitions` — a real gap
+    // this exact scheduler hit the first time it ran.
+    const competitionRow = await this.competitions.resolveCompetition(sport, competition);
+
     const shuffled = [...teams].sort(() => Math.random() - 0.5);
     let created = 0;
 
@@ -64,8 +77,21 @@ export class SimulatedFixturesSchedulerService implements OnApplicationBootstrap
 
       const venueSuffix = sport === 'baseball' ? 'Stadium' : 'Arena';
       const game = await this.prisma.game.create({
-        data: { sport, competition, kickoff, venue: `${home.name} ${venueSuffix}`, status: isLive ? 'live' : 'scheduled', homeTeamId: home.id, awayTeamId: away.id },
+        data: {
+          sport,
+          competition,
+          competitionId: competitionRow.id,
+          kickoff,
+          venue: `${home.name} ${venueSuffix}`,
+          status: isLive ? 'live' : 'scheduled',
+          homeTeamId: home.id,
+          awayTeamId: away.id,
+        },
       });
+      await Promise.all([
+        this.competitions.ensureTeamCompetition(home.id, competitionRow.id),
+        this.competitions.ensureTeamCompetition(away.id, competitionRow.id),
+      ]);
       created++;
 
       if (isLive) {
