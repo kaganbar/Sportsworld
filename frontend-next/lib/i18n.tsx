@@ -62,8 +62,6 @@ const translations = {
       "Real-time transfer rumors, official signings, source credibility ranking, and AI-estimated probabilities — arriving once the Transfer Agent and its data pipeline are built.",
     desc_news:
       "Collected, summarized, and deduplicated sports news — arriving once the News Agent and its data pipeline are built.",
-    desc_ai_center:
-      "A unified view across every AI agent — Football, Basketball, Tennis, Baseball, Volleyball, Transfer, Statistics, News, Prediction — synthesized by a Master Agent into one coherent report.",
     desc_profile: "Sign in with Google to save favorite teams/players and personalize your feed — arriving once auth is built.",
     desc_settings: "Notification preferences, favorite teams/players, and account settings — arriving alongside the Profile module.",
     signInWithGoogle: "Sign in with Google",
@@ -77,6 +75,11 @@ const translations = {
     transfersRawNote: "Raw rumors from Transfermarkt — story-grouping/dedup and our own AI-estimated probability arrive with the Transfer Agent (Phase 8). % shown is Transfermarkt's own community assessment.",
     transfersEmpty: "No rumors yet.",
     simulatedDataNote: "Fixtures and scores on this page are simulated for demonstration — not a live real-world schedule.",
+    aiCenterIntro: "Ask about any game, team, player, transfer, or general sports question — the Master Agent decides which of the platform's specialist agents to consult and synthesizes one report.",
+    aiCenterPlaceholder: "e.g. \"Who's favored in tonight's basketball game?\" or \"Explain the offside rule\"",
+    aiCenterSubmit: "Ask",
+    aiCenterAsking: "Thinking...",
+    aiCenterCached: "Cached answer",
     selectCompetition: "Select a Competition",
     backToCompetitions: "← Competitions",
     tab_live: "Live",
@@ -201,8 +204,6 @@ const translations = {
     desc_transfers:
       "שמועות מעברים בזמן אמת, חתימות רשמיות, דירוג אמינות מקורות והסתברויות המבוססות על AI — בקרוב, לאחר בניית סוכן המעברים וצינור הנתונים שלו.",
     desc_news: "חדשות ספורט שנאספות, מסוכמות ומנוקות מכפילויות — בקרוב, לאחר בניית סוכן החדשות וצינור הנתונים שלו.",
-    desc_ai_center:
-      "תצוגה מאוחדת של כל סוכני ה-AI — כדורגל, כדורסל, טניס, בייסבול, כדורעף, מעברים, סטטיסטיקה, חדשות, חיזויים — מסונתזת על ידי סוכן ראשי לדוח אחד קוהרנטי.",
     desc_profile: "התחברות עם Google לשמירת קבוצות/שחקנים מועדפים והתאמה אישית של הפיד — בקרוב, לאחר בניית מערכת ההתחברות.",
     desc_settings: "העדפות התראות, קבוצות/שחקנים מועדפים והגדרות חשבון — בקרוב, יחד עם מודול הפרופיל.",
     signInWithGoogle: "התחברות עם Google",
@@ -216,6 +217,11 @@ const translations = {
     transfersRawNote: "שמועות גולמיות מ-Transfermarkt — קיבוץ סיפורים/ניקוי כפילויות והסתברות משוערת משלנו יגיעו עם סוכן המעברים (שלב 8). האחוז המוצג הוא הערכת הקהילה של Transfermarkt עצמה.",
     transfersEmpty: "אין שמועות עדיין.",
     simulatedDataNote: "המשחקים והתוצאות בעמוד זה מדומים להדגמה בלבד — אינם לוח משחקים אמיתי בזמן אמת.",
+    aiCenterIntro: "שאלו על כל משחק, קבוצה, שחקן, מעבר, או כל שאלת ספורט כללית — הסוכן הראשי מחליט באילו סוכני AI מומחים להיעזר ומסנתז דוח אחד.",
+    aiCenterPlaceholder: "לדוגמה: \"מי מועדף במשחק הכדורסל הערב?\" או \"הסבירו לי את חוק הנבדל\"",
+    aiCenterSubmit: "שאל",
+    aiCenterAsking: "חושב...",
+    aiCenterCached: "תשובה שמורה",
     selectCompetition: "בחר תחרות",
     backToCompetitions: "→ תחרויות",
     tab_live: "בשידור חי",

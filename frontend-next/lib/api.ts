@@ -457,3 +457,15 @@ export interface TennisPlayerProfile {
 
 export const fetchTennisPlayer = (id: string, lang: Lang = "en") =>
   get<TennisPlayerProfile>(`/api/tennis/players/${id}?lang=${lang}`);
+
+// --- Master Agent (cross-sport, tool-use synthesis) ---
+
+export interface MasterAgentReport {
+  report: string;
+  model: string;
+  created_at: string;
+  cached: boolean;
+}
+
+export const fetchMasterAgentReport = (query: string, lang: Lang = "en") =>
+  post<MasterAgentReport>(`/api/agents/master-agent/query?lang=${lang}`, { query });
