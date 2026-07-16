@@ -121,7 +121,28 @@ async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`);
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new ApiError(res.status, body?.detail ?? `HTTP ${res.status}`);
+    // NestJS's built-in exception filter returns {message, error, statusCode}
+    // (confirmed against the running backend) — this used to read `.detail`
+    // (Django/DRF's convention, left over from before the NestJS migration),
+    // which is never present here, so every error shown anywhere in this
+    // app was silently falling through to a generic "HTTP 404"/"HTTP 429"
+    // instead of the specific, helpful message the backend actually sends
+    // (e.g. "Too many AI analysis requests right now — please try again
+    // shortly.").
+    throw new ApiError(res.status, body?.message ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function post<T>(path: string, data: unknown): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(res.status, body?.message ?? `HTTP ${res.status}`);
   }
   return res.json();
 }

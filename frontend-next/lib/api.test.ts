@@ -32,8 +32,12 @@ describe("lib/api get<T> (via representative fetchers)", () => {
     expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining("/api/games/42/?lang=he"));
   });
 
-  it("throws ApiError with the status and the body's detail message on a non-ok response", async () => {
-    mockFetchOnce({ ok: false, status: 404, json: async () => ({ detail: "Not found" }) });
+  it("throws ApiError with the status and the body's message field on a non-ok response", async () => {
+    // NestJS's built-in exception filter returns {message, error, statusCode}
+    // — not Django/DRF's {detail}, which this test (and the code it was
+    // testing) used to assume, so every real backend error silently fell
+    // through to the generic "HTTP {status}" fallback below instead.
+    mockFetchOnce({ ok: false, status: 404, json: async () => ({ message: "Not found", error: "Not Found", statusCode: 404 }) });
 
     await expect(fetchNews()).rejects.toMatchObject({
       status: 404,
