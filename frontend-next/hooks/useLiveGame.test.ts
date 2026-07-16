@@ -6,6 +6,7 @@ class FakeWebSocket {
   static instances: FakeWebSocket[] = [];
   url: string;
   onmessage: ((evt: { data: string }) => void) | null = null;
+  onclose: (() => void) | null = null;
   close = vi.fn();
 
   constructor(url: string) {
@@ -22,6 +23,7 @@ describe("useLiveGame", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("does not open a socket when wsPath is null", () => {
@@ -62,5 +64,30 @@ describe("useLiveGame", () => {
     unmount();
 
     expect(socket.close).toHaveBeenCalled();
+  });
+
+  it("reconnects after an unexpected close", () => {
+    vi.useFakeTimers();
+    renderHook(() => useLiveGame("/ws/games/football/1/", vi.fn()));
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    FakeWebSocket.instances[0].onclose?.();
+    expect(FakeWebSocket.instances).toHaveLength(1); // not yet — reconnect is delayed
+
+    vi.runOnlyPendingTimers();
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    expect(FakeWebSocket.instances[1].url).toBe("ws://localhost:8001/ws/games/football/1/");
+  });
+
+  it("does not reconnect after an unmount-triggered close", () => {
+    vi.useFakeTimers();
+    const { unmount } = renderHook(() => useLiveGame("/ws/games/football/1/", vi.fn()));
+
+    unmount();
+    FakeWebSocket.instances[0].onclose?.();
+    vi.runOnlyPendingTimers();
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
   });
 });
