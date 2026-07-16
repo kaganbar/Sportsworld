@@ -163,6 +163,18 @@ model Game {
   // Doubles as the scraper's natural key for upserts.
   @@unique([sport, competition, kickoff, homeTeamId, awayTeamId])
   @@index([competitionId])
+  // The simulated ticker (simulated-ticker.service.ts) runs a `{sport,
+  // status: 'live'}` scan every 4s, forever, for each of the 5 sports — the
+  // hottest query in the app by call frequency. The above unique
+  // constraint's leading columns (sport, competition, ...) can't serve it
+  // (status isn't in that index at all).
+  @@index([sport, status])
+  // GamesService.gamesToday()'s `{sport, kickoff: {gte, lt}}` range query
+  // (once per page load, cached 20s) — same reasoning: competition sits
+  // between sport and kickoff in the unique constraint above, so it can't
+  // serve a kickoff range scan that isn't also filtering by an exact
+  // competition string.
+  @@index([sport, kickoff])
 }
 
 model Lineup {
@@ -295,6 +307,12 @@ model TennisMatch {
 
   @@unique([tour, tournament, round, startTime, player1Id, player2Id])
   @@index([competitionId])
+  // Same reasoning as Game's two extra indexes above: the ticker's
+  // `{status: 'live'}` scan (every 4s) and TennisService.matchesToday()'s
+  // `{startTime: {gte, lt}}` range query aren't servable by the unique
+  // constraint's leading `tour` column.
+  @@index([status])
+  @@index([startTime])
 }
 
 model TennisSet {
