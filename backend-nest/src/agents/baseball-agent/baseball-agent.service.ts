@@ -1,16 +1,16 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
-import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
-import { z } from 'zod';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GamesService } from '../../games/games.service';
 import { StatsService } from '../../stats/stats.service';
 import { TranslationsService } from '../../translations/translations.service';
 import { RedisService } from '../../redis/redis.service';
 import { Lang } from '../../common/lang.decorator';
-import { AgentCallerService, RATE_LIMIT_BUCKET, RATE_LIMIT_MAX_CALLS, RATE_LIMIT_WINDOW_SECONDS, RateLimitExceededError } from '../common/agent-caller.service';
+import { AgentCallerService } from '../common/agent-caller.service';
 import { normalizeTwoWay } from '../common/probability-normalizer';
+import { buildTeamMatchContext } from '../common/team-match-context';
+import { runEnrichment } from '../common/enrichment';
+import { mockSummaryAndKeyFactors } from '../common/mock-summary';
 import { BaseballAnalysisSchema, BaseballAnalysis } from './baseball-agent.schema';
 import { NewsAgentService } from '../news-agent/news-agent.service';
 import { PredictionAgentService } from '../prediction-agent/prediction-agent.service';
@@ -52,10 +52,6 @@ none if the base context is already sufficient — this is a lightweight enrichm
 not the analysis itself. You do not need to write a final summary; a brief acknowledgment
 is fine once you're done gathering.`;
 
-// See football-agent.service.ts's identical constant for the reasoning
-// (2 tools -> a much smaller cap than Master Agent's 7-tool ROUND_CAP=6).
-const ENRICHMENT_ROUND_CAP = 4;
-
 @Injectable()
 export class BaseballAgentService {
   private readonly logger = new Logger(BaseballAgentService.name);
@@ -80,157 +76,11 @@ export class BaseballAgentService {
     this.mockMode = this.config.get<string>('AI_AGENT_MODE', defaultMode) !== 'live';
   }
 
-  private async buildMatchContext(game: any, lang: Lang) {
-    const tr = (text: string) => this.translations.translate(text, lang);
-
-    const resultDtos = async (results: any[]) =>
-      Promise.all(
-        results.map(async (r) => ({
-          date: r.date.toISOString().slice(0, 10),
-          competition: await tr(r.competition),
-          home_team: await tr(r.homeTeam.name),
-          away_team: await tr(r.awayTeam.name),
-          score: `${r.homeScore}-${r.awayScore}`,
-        })),
-      );
-
-    const injuryDtos = async (teamId: number) => {
-      const injuries = await this.prisma.injury.findMany({ where: { teamId }, include: { player: true } });
-      return Promise.all(
-        injuries.map(async (i) => ({
-          player: await tr(i.player.name),
-          position: i.player.position,
-          status: i.status,
-          reason: i.reason,
-        })),
-      );
-    };
-
-    const [homeRecent, awayRecent, h2h, homeStats, awayStats, homeInjuries, awayInjuries] = await Promise.all([
-      this.stats.teamRecentResults(game.homeTeamId),
-      this.stats.teamRecentResults(game.awayTeamId),
-      this.stats.teamHeadToHead(game.homeTeamId, game.awayTeamId),
-      this.stats.teamFormStats(game.homeTeamId),
-      this.stats.teamFormStats(game.awayTeamId),
-      injuryDtos(game.homeTeamId),
-      injuryDtos(game.awayTeamId),
-    ]);
-
-    return {
-      fixture: {
-        competition: await tr(game.competition),
-        kickoff: game.kickoff.toISOString(),
-        venue: await tr(game.venue),
-        home_team: await tr(game.homeTeam.name),
-        away_team: await tr(game.awayTeam.name),
-      },
-      home_team: {
-        name: await tr(game.homeTeam.name),
-        recent_form: await resultDtos(homeRecent),
-        form_stats: homeStats,
-        injuries: homeInjuries,
-      },
-      away_team: {
-        name: await tr(game.awayTeam.name),
-        recent_form: await resultDtos(awayRecent),
-        form_stats: awayStats,
-        injuries: awayInjuries,
-      },
-      head_to_head: await resultDtos(h2h),
-    };
-  }
-
-  /** Phase A — optional enrichment via a bounded tool-use loop, live mode
-   * only. See football-agent.service.ts's identical method for the full
-   * reasoning (error-handling split, rate-limit bucket sharing, closure-
-   * captured tool results) — this mirrors it exactly, adapted to baseball
-   * teams/games. */
-  private async enrichContext(gameId: number, lang: Lang, homeTeam: string, awayTeam: string, baseContext: unknown) {
-    if (this.mockMode) return {};
-
-    const allowed = await this.redis.checkRateLimit(RATE_LIMIT_BUCKET, RATE_LIMIT_MAX_CALLS, RATE_LIMIT_WINDOW_SECONDS);
-    if (!allowed) {
-      throw new RateLimitExceededError('Too many AI analysis requests right now — please try again shortly.');
-    }
-    if (!this.apiKey) return {};
-
-    const newsResults: Record<string, unknown> = {};
-    let predictionResult: unknown = null;
-
-    const tools = [
-      betaZodTool({
-        name: 'get_team_news',
-        description: `Get recent news headlines/summaries mentioning a team by name. Use "${homeTeam}" or "${awayTeam}" (the exact names from the base context).`,
-        inputSchema: z.object({ team_name: z.string() }),
-        run: async ({ team_name }) => {
-          try {
-            const news = await this.newsAgent.getNewsForSubject(team_name, lang);
-            newsResults[team_name] = news;
-            return JSON.stringify(news);
-          } catch (err) {
-            return JSON.stringify({ error: (err as Error).message });
-          }
-        },
-      }),
-      betaZodTool({
-        name: 'get_independent_prediction',
-        description: 'Get an independent statistical cross-check prediction for this exact fixture.',
-        inputSchema: z.object({}),
-        run: async () => {
-          try {
-            const prediction = await this.predictionAgent.getOrCreatePrediction('baseball', gameId, lang);
-            predictionResult = {
-              prediction: prediction.prediction,
-              probabilities: prediction.probabilities,
-              confidence: prediction.confidence,
-            };
-            return JSON.stringify(predictionResult);
-          } catch (err) {
-            return JSON.stringify({ error: (err as Error).message });
-          }
-        },
-      }),
-    ];
-
-    try {
-      const client = new Anthropic({ apiKey: this.apiKey });
-      await client.beta.messages.toolRunner({
-        model: this.model,
-        max_tokens: 1024,
-        max_iterations: ENRICHMENT_ROUND_CAP,
-        system: ENRICHMENT_SYSTEM_PROMPT,
-        tools,
-        messages: [{ role: 'user', content: JSON.stringify(baseContext) }],
-      });
-    } catch (err) {
-      this.logger.warn(`Baseball Agent enrichment step failed for game ${gameId}, continuing without it: ${(err as Error).message}`);
-    }
-
-    const enrichment: { recent_news?: unknown; cross_check_prediction?: unknown } = {};
-    if (Object.keys(newsResults).length > 0) enrichment.recent_news = newsResults;
-    if (predictionResult) enrichment.cross_check_prediction = predictionResult;
-    return enrichment;
-  }
-
   private mockAnalysis(context: any, lang: Lang): BaseballAnalysis {
     const home = context.fixture.home_team;
     const away = context.fixture.away_team;
-    const summary =
-      lang === 'he'
-        ? `[מדומה] ניתוח לדוגמה לקראת ${home} מול ${away}. ` +
-          'זהו טקסט קבוע מראש לצורכי פיתוח — לא בוצעה קריאה אמיתית ל-Claude. ' +
-          'עברו למצב live (AI_AGENT_MODE=live) עם מפתח API תקין לקבלת ניתוח אמיתי.'
-        : `[Mock] Simulated pre-match analysis for ${home} vs ${away}. ` +
-          'This is fixed placeholder text for development — no real Claude API call ' +
-          'was made. Set AI_AGENT_MODE=live with a valid ANTHROPIC_API_KEY for real analysis.';
-    const keyFactors =
-      lang === 'he'
-        ? ['[מדומה] גורם מפתח לדוגמה מספר אחד', '[מדומה] גורם מפתח לדוגמה מספר שתיים', '[מדומה] גורם מפתח לדוגמה מספר שלוש']
-        : ['[Mock] Placeholder key factor one', '[Mock] Placeholder key factor two', '[Mock] Placeholder key factor three'];
-
     return {
-      summary,
-      key_factors: keyFactors,
+      ...mockSummaryAndKeyFactors(home, away, lang),
       probabilities: { home_win: 55, away_win: 45 },
       confidence: 'medium',
     };
@@ -251,15 +101,29 @@ export class BaseballAgentService {
     });
     if (existing) return existing;
 
-    const baseContext = await this.buildMatchContext(game, lang);
+    const baseContext = await buildTeamMatchContext({ prisma: this.prisma, stats: this.stats, translations: this.translations }, game, lang);
 
-    const enrichment = await this.enrichContext(
-      gameId,
+    const enrichment = await runEnrichment({
+      deps: {
+        mockMode: this.mockMode,
+        apiKey: this.apiKey,
+        model: this.model,
+        redis: this.redis,
+        newsAgent: this.newsAgent,
+        predictionAgent: this.predictionAgent,
+        logger: this.logger,
+      },
+      sport: 'baseball',
+      entityId: gameId,
+      entityLabel: 'game',
+      agentLabel: 'Baseball Agent',
       lang,
-      baseContext.fixture.home_team,
-      baseContext.fixture.away_team,
+      subjectKind: 'team',
+      subject1: baseContext.fixture.home_team,
+      subject2: baseContext.fixture.away_team,
+      systemPrompt: ENRICHMENT_SYSTEM_PROMPT,
       baseContext,
-    );
+    });
     const context = { ...baseContext, ...enrichment };
 
     this.logger.log(`Requesting baseball analysis for game ${gameId} (lang=${lang})`);
