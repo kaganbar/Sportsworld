@@ -71,6 +71,7 @@ export default function SettingsPage() {
           type="button"
           role="switch"
           aria-checked={notif}
+          aria-label={t("notifications")}
           onClick={() => setNotif(!notif)}
           className={cn(
             "relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors",
