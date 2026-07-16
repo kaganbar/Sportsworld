@@ -86,21 +86,25 @@ export class StandingsService {
       }
     }
 
-    const rows = await Promise.all(
-      [...table.values()].map(async (r) => ({
-        team_id: r.team.id,
-        team_name: await this.translations.translate(r.team.name, lang),
-        short_name: r.team.shortName,
-        played: r.played,
-        wins: r.wins,
-        draws: r.draws,
-        losses: r.losses,
-        goals_for: r.goalsFor,
-        goals_against: r.goalsAgainst,
-        goal_diff: r.goalsFor - r.goalsAgainst,
-        points: sportKey === 'basketball' ? r.wins : r.wins * 3 + r.draws,
-      })),
-    );
+    // One batched translation query for every team name instead of one
+    // query per team (same N+1 fix as GamesService/TennisService — see
+    // GamesService's TMap comment for the full rationale).
+    const teamNames = [...table.values()].map((r) => r.team.name);
+    const nameMap = await this.translations.translateMany(teamNames, lang);
+
+    const rows = [...table.values()].map((r) => ({
+      team_id: r.team.id,
+      team_name: nameMap[r.team.name] ?? r.team.name,
+      short_name: r.team.shortName,
+      played: r.played,
+      wins: r.wins,
+      draws: r.draws,
+      losses: r.losses,
+      goals_for: r.goalsFor,
+      goals_against: r.goalsAgainst,
+      goal_diff: r.goalsFor - r.goalsAgainst,
+      points: sportKey === 'basketball' ? r.wins : r.wins * 3 + r.draws,
+    }));
 
     rows.sort((a, b) => b.points - a.points || b.goal_diff - a.goal_diff || b.goals_for - a.goals_for);
 
@@ -120,14 +124,19 @@ export class StandingsService {
       orderBy: { ranking: 'asc' },
       take: 100,
     });
-    const dtos = await Promise.all(
-      players.map(async (p) => ({
-        id: p.id,
-        name: await this.translations.translate(p.name, lang),
-        country: p.country,
-        ranking: p.ranking,
-      })),
+    // Up to 100 players — was up to 100 individual translation queries, the
+    // worst case of this N+1 pattern found in the codebase. One batched
+    // call instead (same fix as GamesService/TennisService/standings above).
+    const nameMap = await this.translations.translateMany(
+      players.map((p) => p.name),
+      lang,
     );
+    const dtos = players.map((p) => ({
+      id: p.id,
+      name: nameMap[p.name] ?? p.name,
+      country: p.country,
+      ranking: p.ranking,
+    }));
     await this.redis.set(cacheKey, JSON.stringify(dtos), STANDINGS_CACHE_TTL_SECONDS);
     return dtos;
   }
