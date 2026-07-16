@@ -14,6 +14,9 @@ const translations = {
   en: {
     tagline: "Pick a sport. Get today's games and AI match analysis.",
     comingSoon: "Coming soon",
+    notFoundTitle: "Page not found",
+    notFoundBody: "This page doesn't exist, or the link may be broken. Let's get you back on track.",
+    goHome: "Go to home",
     sport_football: "Football",
     sport_basketball: "Basketball",
     sport_tennis: "Tennis",
@@ -157,6 +160,9 @@ const translations = {
   he: {
     tagline: "בוחרים ענף ספורט, מקבלים את משחקי היום וניתוח AI לכל משחק.",
     comingSoon: "בקרוב",
+    notFoundTitle: "העמוד לא נמצא",
+    notFoundBody: "נראה שהעמוד הזה לא קיים, או שהקישור שגוי. בואו נחזיר אתכם למסלול.",
+    goHome: "חזרה לדף הבית",
     sport_football: "כדורגל",
     sport_basketball: "כדורסל",
     sport_tennis: "טניס",
