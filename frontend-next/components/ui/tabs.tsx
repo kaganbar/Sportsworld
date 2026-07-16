@@ -9,6 +9,7 @@
 // package installation is available, without touching call sites.
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/lib/i18n";
 
 interface TabsContextValue {
   value: string;
@@ -48,9 +49,38 @@ export function Tabs({
   );
 }
 
+// WAI-ARIA APG Tabs pattern: arrow keys move focus AND activate (this
+// widget's simple pill-tab style already activates on click, so automatic
+// activation on arrow-move matches, rather than requiring a second Enter/
+// Space). Home/End jump to the first/last tab. Direction is RTL-aware —
+// this app defaults to Hebrew, and the APG recommends swapping Left/Right
+// semantics under RTL so the arrow that "visually" advances still does.
 export function TabsList({ className, children }: { className?: string; children: React.ReactNode }) {
+  const { lang } = useLang();
+  const listRef = React.useRef<HTMLDivElement>(null);
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const forwardKey = lang === "he" ? "ArrowLeft" : "ArrowRight";
+    const backwardKey = lang === "he" ? "ArrowRight" : "ArrowLeft";
+    if (![forwardKey, backwardKey, "Home", "End"].includes(e.key)) return;
+
+    const tabs = Array.from(listRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? []);
+    if (tabs.length === 0) return;
+    const currentIndex = tabs.indexOf(document.activeElement as HTMLButtonElement);
+
+    let nextIndex: number;
+    if (e.key === "Home") nextIndex = 0;
+    else if (e.key === "End") nextIndex = tabs.length - 1;
+    else if (e.key === forwardKey) nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % tabs.length;
+    else nextIndex = currentIndex < 0 ? 0 : (currentIndex - 1 + tabs.length) % tabs.length;
+
+    e.preventDefault();
+    tabs[nextIndex].focus();
+    tabs[nextIndex].click();
+  };
+
   return (
-    <div role="tablist" className={cn("inline-flex flex-wrap items-center gap-2.5", className)}>
+    <div ref={listRef} role="tablist" onKeyDown={onKeyDown} className={cn("inline-flex flex-wrap items-center gap-2.5", className)}>
       {children}
     </div>
   );
@@ -67,6 +97,7 @@ export function TabsTrigger({ value, className, children }: { value: string; cla
       type="button"
       role="tab"
       aria-selected={active}
+      tabIndex={active ? 0 : -1}
       data-state={active ? "active" : "inactive"}
       onClick={() => ctx.setValue(value)}
       className={cn(
