@@ -18,6 +18,18 @@ import { Lang } from '../common/lang.decorator';
 // re-polls this endpoint to see score changes.
 const GAMES_TODAY_CACHE_TTL_SECONDS = 20;
 
+// Pre-resolved sourceText -> translatedText lookup, built once per request
+// via TranslationsService.translateMany (one query) instead of every DTO
+// builder below calling the single-row TranslationsService.translate
+// individually. A single Hebrew gameDetail() response used to translate
+// ~50+ names one at a time (every lineup/bench player across both teams,
+// every recent-form/H2H competition string, every injured player, plus
+// competition/venue/team names) — confirmed via the codebase's own unused
+// TranslationsService.translateMany, built for exactly this and never
+// wired into any caller until now.
+type TMap = Record<string, string>;
+const tr = (map: TMap, text: string) => map[text] ?? text;
+
 @Injectable()
 export class GamesService {
   constructor(
@@ -28,31 +40,31 @@ export class GamesService {
     private readonly competitions: CompetitionsService,
   ) {}
 
-  async teamDto(team: { id: number; name: string; shortName: string; country: string; primaryColor: string }, lang: Lang) {
+  teamDto(team: { id: number; name: string; shortName: string; country: string; primaryColor: string }, map: TMap) {
     return {
       id: team.id,
-      name: await this.translations.translate(team.name, lang),
+      name: tr(map, team.name),
       short_name: team.shortName,
       country: team.country,
       primary_color: team.primaryColor,
     };
   }
 
-  async gameListDto(
+  gameListDto(
     game: {
       id: number; competition: string; kickoff: Date; venue: string; status: string;
       homeTeam: any; awayTeam: any; homeScore: number | null; awayScore: number | null; minute: number | null;
     },
-    lang: Lang,
+    map: TMap,
   ) {
     return {
       id: game.id,
-      competition: await this.translations.translate(game.competition, lang),
+      competition: tr(map, game.competition),
       kickoff: game.kickoff.toISOString(),
-      venue: await this.translations.translate(game.venue, lang),
+      venue: tr(map, game.venue),
       status: game.status,
-      home_team: await this.teamDto(game.homeTeam, lang),
-      away_team: await this.teamDto(game.awayTeam, lang),
+      home_team: this.teamDto(game.homeTeam, map),
+      away_team: this.teamDto(game.awayTeam, map),
       home_score: game.homeScore,
       away_score: game.awayScore,
       minute: game.minute,
@@ -84,16 +96,25 @@ export class GamesService {
       include: { homeTeam: true, awayTeam: true },
       orderBy: { kickoff: 'asc' },
     });
-    const dtos = await Promise.all(games.map((g) => this.gameListDto(g, lang)));
+
+    const texts = new Set<string>();
+    for (const g of games) {
+      texts.add(g.competition);
+      texts.add(g.venue);
+      texts.add(g.homeTeam.name);
+      texts.add(g.awayTeam.name);
+    }
+    const map = await this.translations.translateMany([...texts], lang);
+    const dtos = games.map((g) => this.gameListDto(g, map));
 
     await this.redis.set(cacheKey, JSON.stringify(dtos), GAMES_TODAY_CACHE_TTL_SECONDS);
     return dtos;
   }
 
-  private async resultDto(r: { date: Date; competition: string; homeTeam: any; awayTeam: any; homeScore: number; awayScore: number }, lang: Lang) {
+  private resultDto(r: { date: Date; competition: string; homeTeam: any; awayTeam: any; homeScore: number; awayScore: number }, map: TMap) {
     return {
       date: r.date.toISOString().slice(0, 10),
-      competition: await this.translations.translate(r.competition, lang),
+      competition: tr(map, r.competition),
       home_team: r.homeTeam.shortName,
       away_team: r.awayTeam.shortName,
       home_score: r.homeScore,
@@ -101,10 +122,10 @@ export class GamesService {
     };
   }
 
-  private async lineupDto(l: { player: any; teamId: number; position: string; isStarting: boolean }, lang: Lang) {
+  private lineupDto(l: { player: any; teamId: number; position: string; isStarting: boolean }, map: TMap) {
     return {
       id: l.player.id,
-      name: await this.translations.translate(l.player.name, lang),
+      name: tr(map, l.player.name),
       shirt_number: l.player.shirtNumber,
       position: l.position,
       is_starting: l.isStarting,
@@ -112,9 +133,9 @@ export class GamesService {
     };
   }
 
-  private async injuryDto(i: { player: any; status: string; reason: string }, lang: Lang) {
+  private injuryDto(i: { player: any; status: string; reason: string }, map: TMap) {
     return {
-      player: await this.translations.translate(i.player.name, lang),
+      player: tr(map, i.player.name),
       status: i.status,
       reason: i.reason,
     };
@@ -156,11 +177,25 @@ export class GamesService {
       goals_against: s.goalsAgainst,
     });
 
+    // Every name/competition string this response could possibly render,
+    // collected once and resolved in a single batched query — see this
+    // file's TMap comment for why (replaces what used to be one DB query
+    // per name, sequentially awaited inside every DTO builder below).
+    const texts = new Set<string>();
+    texts.add(game.competition);
+    texts.add(game.venue);
+    texts.add(game.homeTeam.name);
+    texts.add(game.awayTeam.name);
+    for (const l of lineups) texts.add(l.player.name);
+    for (const r of [...homeRecent, ...awayRecent, ...h2h]) texts.add(r.competition);
+    for (const i of [...homeInjuries, ...awayInjuries]) texts.add(i.player.name);
+    const map = await this.translations.translateMany([...texts], lang);
+
     return {
-      game: await this.gameListDto(game, lang),
+      game: this.gameListDto(game, map),
       lineups: {
-        home: await Promise.all(homeLineup.map((l) => this.lineupDto(l, lang))),
-        away: await Promise.all(awayLineup.map((l) => this.lineupDto(l, lang))),
+        home: homeLineup.map((l) => this.lineupDto(l, map)),
+        away: awayLineup.map((l) => this.lineupDto(l, map)),
       },
       stats: { home: statsDto(homeStats), away: statsDto(awayStats) },
       // Raw per-game team stat breakdown (possession/shots/... or
@@ -170,13 +205,13 @@ export class GamesService {
       // scraper/seed hasn't populated it (e.g. not-yet-live fixtures).
       game_stats: game.stats ?? null,
       recent_form: {
-        home: await Promise.all(homeRecent.map((r) => this.resultDto(r, lang))),
-        away: await Promise.all(awayRecent.map((r) => this.resultDto(r, lang))),
+        home: homeRecent.map((r) => this.resultDto(r, map)),
+        away: awayRecent.map((r) => this.resultDto(r, map)),
       },
-      head_to_head: await Promise.all(h2h.map((r) => this.resultDto(r, lang))),
+      head_to_head: h2h.map((r) => this.resultDto(r, map)),
       injuries: {
-        home: await Promise.all(homeInjuries.map((i) => this.injuryDto(i, lang))),
-        away: await Promise.all(awayInjuries.map((i) => this.injuryDto(i, lang))),
+        home: homeInjuries.map((i) => this.injuryDto(i, map)),
+        away: awayInjuries.map((i) => this.injuryDto(i, map)),
       },
     };
   }
