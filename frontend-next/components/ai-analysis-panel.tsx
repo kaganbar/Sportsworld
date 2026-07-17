@@ -97,7 +97,7 @@ export default function AiAnalysisPanel<T extends AgentAnalysisBase>({
           </div>
           <div className="mb-6 text-xs text-white/45">{t("predictionConfidence")}</div>
 
-          <div className="flex h-9 overflow-hidden rounded-lg text-xs font-semibold text-white" title="Win probabilities">
+          <div className="flex h-9 overflow-hidden rounded-lg text-xs font-semibold text-white" title={t("winProbabilities")}>
             {segments.map((seg) => (
               <div
                 key={seg.key}

@@ -131,7 +131,7 @@ export function AppSidebar() {
           <button
             type="button"
             onClick={toggle}
-            aria-label="Toggle sidebar"
+            aria-label={t("toggleSidebar")}
             className="rounded-md p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
           >
             <CollapseIcon className="h-4 w-4" />
@@ -149,7 +149,7 @@ export function AppSidebar() {
           <LangToggle />
           <Link
             href="/settings"
-            aria-label="Settings"
+            aria-label={t("nav_settings")}
             className="flex items-center gap-2 rounded-full border border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-3 py-1.5 text-xs font-semibold text-white/85 backdrop-blur-md transition hover:text-white"
           >
             <Settings className="h-3.5 w-3.5" />
@@ -234,7 +234,7 @@ export function MobileTopBar() {
         <LangToggle />
         <Link
           href="/settings"
-          aria-label="Settings"
+          aria-label={t("nav_settings")}
           className="flex items-center rounded-full border border-white/14 bg-white/5 p-1.5 text-white/85 backdrop-blur-md transition hover:text-white"
         >
           <Settings className="h-4 w-4" />
