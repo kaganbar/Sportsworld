@@ -51,7 +51,9 @@ export default function TennisCompetitionHub({ params }: { params: { competition
   }, [lang, competition]);
 
   const live = matches?.filter((m) => m.status === "live") ?? [];
-  const upcoming = matches?.filter((m) => m.status !== "live") ?? [];
+  // Not just "!= live" — that would also catch already-finished matches,
+  // which have no business showing up in an "Upcoming" tab.
+  const upcoming = matches?.filter((m) => m.status === "scheduled") ?? [];
 
   return (
     <ThemeLayout

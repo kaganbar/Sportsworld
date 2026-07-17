@@ -61,7 +61,9 @@ export default function TeamSportCompetitionHub({
   }, [sport, lang, competition]);
 
   const live = games?.filter((g) => g.status === "live") ?? [];
-  const upcoming = games?.filter((g) => g.status !== "live") ?? [];
+  // Not just "!= live" — that would also catch already-finished games,
+  // which have no business showing up in an "Upcoming" tab.
+  const upcoming = games?.filter((g) => g.status === "scheduled") ?? [];
 
   return (
     <ThemeLayout
