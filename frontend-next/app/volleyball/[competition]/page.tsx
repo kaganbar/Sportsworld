@@ -1,8 +1,10 @@
-"use client";
+import VolleyballCompetitionHub from "./client";
 
-import TeamSportCompetitionHub from "@/components/team-sport-competition-hub";
-import { fetchVolleyballGames } from "@/lib/api";
+// See app/baseball/[competition]/page.tsx's comment for the full reasoning.
+export function generateStaticParams() {
+  return [{ competition: "placeholder" }];
+}
 
-export default function VolleyballCompetitionHub({ params }: { params: { competition: string } }) {
-  return <TeamSportCompetitionHub sport="volleyball" competition={params.competition} fetchGames={fetchVolleyballGames} />;
+export default function Page({ params }: { params: { competition: string } }) {
+  return <VolleyballCompetitionHub params={params} />;
 }

@@ -1,18 +1,10 @@
-"use client";
+import FootballPlayerProfile from "./client";
 
-import TeamSportPlayerProfile from "@/components/team-sport-player-profile";
-import { FootballSeasonStats } from "@/lib/api";
+// See app/baseball/[competition]/page.tsx's comment for the full reasoning.
+export function generateStaticParams() {
+  return [{ id: "placeholder" }];
+}
 
-export default function FootballPlayerProfile({ params }: { params: { id: string } }) {
-  return (
-    <TeamSportPlayerProfile<FootballSeasonStats>
-      id={params.id}
-      sport="football"
-      statRows={[
-        { labelKey: "playerGoals", value: (s) => s?.goals ?? "-" },
-        { labelKey: "playerAssists", value: (s) => s?.assists ?? "-" },
-        { labelKey: "playerRating", value: (s) => (s?.rating != null ? s.rating.toFixed(1) : "-") },
-      ]}
-    />
-  );
+export default function Page({ params }: { params: { id: string } }) {
+  return <FootballPlayerProfile params={params} />;
 }

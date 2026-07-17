@@ -19,6 +19,20 @@ module.exports = (phase) => {
     // dev` fully dynamic while `next build` (used for the Tauri bundle)
     // still gets a real static export.
     ...(isDev ? {} : { output: "export" }),
+    // Separate build output directory from `next dev`'s `.next` — this
+    // Docker service's dev server (npm run dev) runs continuously in the
+    // background for the whole session, and a `next build` (for the Tauri
+    // desktop bundle) sharing the same `.next` directory concurrently
+    // corrupts the build's page-analysis step: a real, reproduced bug hit
+    // while verifying the static export still worked after this session's
+    // page refactors — the build nondeterministically reported a different
+    // dynamic route as "missing generateStaticParams()" on each run (one
+    // that demonstrably already had it), traced to `next dev` actively
+    // rewriting `.next` mid-build. Gated the same way as `output: "export"`
+    // above (`next dev` keeps using the default `.next`, since this only
+    // applies outside dev phase) — the fix is giving `next build` its own
+    // directory, not a Next.js-hardcoded behavior.
+    ...(isDev ? {} : { distDir: ".next-build" }),
     images: { unoptimized: true },
   };
 };
