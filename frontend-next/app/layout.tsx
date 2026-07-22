@@ -7,6 +7,7 @@ import { AppSidebar, MobileTopBar } from "@/components/app-sidebar";
 import SportTransition from "@/components/sport-transition";
 import ScrollProgress from "@/components/scroll-progress";
 import AmbientGlow from "@/components/ambient-glow";
+import ParallaxFallback from "@/components/parallax-fallback";
 
 // next/dynamic with ssr:false is the actual "client-only, never rendered
 // on the server" boundary in Next.js — PersistentWorldCanvas touches
@@ -38,6 +39,7 @@ export default function RootLayout({
       <body className="bg-neutral-950 text-white">
         <Providers>
           <ScrollProgress />
+          <ParallaxFallback />
           <PersistentWorldCanvas />
           <AmbientGlow />
           {/* Shared scrim — previously duplicated per-page in
