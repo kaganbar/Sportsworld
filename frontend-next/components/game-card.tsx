@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { useLiveGame } from "@/hooks/useLiveGame";
+import { useFadeUpReveal } from "@/hooks/useFadeUpReveal";
 import { TKey } from "@/lib/i18n";
 import { Game } from "@/lib/api";
 
@@ -30,6 +31,7 @@ export default function GameCard({
 }) {
   const [live, setLive] = useState(game);
   useEffect(() => setLive(game), [game]);
+  const revealRef = useFadeUpReveal<HTMLDivElement>();
 
   useLiveGame(
     game.status === "live" ? `/ws/games/${sport}/${game.id}/` : null,
@@ -53,23 +55,25 @@ export default function GameCard({
   const statusColorVar = isLive ? "var(--status-live)" : isFinished ? "var(--status-finished)" : "var(--status-upcoming)";
 
   return (
-    <Link href={`/${sport}/games/${live.id}`}>
-      <div className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-[20px] p-5 transition duration-200 hover:-translate-y-1 hover:border-[var(--brand-accent)]/40">
-        <div className="flex min-w-[260px] flex-1 items-center gap-4">
-          <span className="flex-1 text-end text-[15px] font-bold text-white">{live.home_team.name}</span>
-          <span
-            dir="ltr"
-            className="min-w-[64px] rounded-lg bg-white/10 px-3 py-1.5 text-center text-lg font-extrabold text-white"
-          >
-            {live.status === "scheduled" ? timeOf(live.kickoff) : `${live.home_score ?? "-"} - ${live.away_score ?? "-"}`}
-          </span>
-          <span className="flex-1 text-start text-[15px] font-bold text-white">{live.away_team.name}</span>
+    <div ref={revealRef} className="fade-up">
+      <Link href={`/${sport}/games/${live.id}`}>
+        <div className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-[20px] p-5 transition duration-200 hover:-translate-y-1 hover:border-[var(--brand-accent)]/40">
+          <div className="flex min-w-[260px] flex-1 items-center gap-4">
+            <span className="flex-1 text-end text-[15px] font-bold text-white">{live.home_team.name}</span>
+            <span
+              dir="ltr"
+              className="min-w-[64px] rounded-lg bg-white/10 px-3 py-1.5 text-center text-lg font-extrabold text-white"
+            >
+              {live.status === "scheduled" ? timeOf(live.kickoff) : `${live.home_score ?? "-"} - ${live.away_score ?? "-"}`}
+            </span>
+            <span className="flex-1 text-start text-[15px] font-bold text-white">{live.away_team.name}</span>
+          </div>
+          <div className="flex min-w-[120px] items-center justify-end gap-2 text-sm font-semibold" style={{ color: statusColorVar }}>
+            {isLive && <span className="live-dot h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--status-live)]" />}
+            {statusLabel}
+          </div>
         </div>
-        <div className="flex min-w-[120px] items-center justify-end gap-2 text-sm font-semibold" style={{ color: statusColorVar }}>
-          {isLive && <span className="live-dot h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--status-live)]" />}
-          {statusLabel}
-        </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }

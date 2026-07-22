@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { useFadeUpReveal } from "@/hooks/useFadeUpReveal";
 import { TKey } from "@/lib/i18n";
 import { TennisMatch } from "@/lib/api";
 
@@ -20,22 +21,25 @@ export default function MatchCard({ match, t }: { match: TennisMatch; t: (key: T
   const isFinished = match.status === "finished";
   const statusLabel = isLive ? t("liveNow") : isFinished ? t("statusFinished") : startTime(match.start_time);
   const statusColorVar = isLive ? "var(--status-live)" : isFinished ? "var(--status-finished)" : "var(--status-upcoming)";
+  const revealRef = useFadeUpReveal<HTMLDivElement>();
 
   return (
-    <Link href={`/tennis/matches/${match.id}`}>
-      <div className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-[20px] p-5 transition duration-200 hover:-translate-y-1 hover:border-[var(--brand-accent)]/40">
-        <div className="flex min-w-[260px] flex-1 items-center gap-4">
-          <span className="flex-1 text-end text-[15px] font-bold text-white">{match.player1.name}</span>
-          <span dir="ltr" className="min-w-[64px] rounded-lg bg-white/10 px-3 py-1.5 text-center text-sm font-extrabold text-white">
-            vs
-          </span>
-          <span className="flex-1 text-start text-[15px] font-bold text-white">{match.player2.name}</span>
+    <div ref={revealRef} className="fade-up">
+      <Link href={`/tennis/matches/${match.id}`}>
+        <div className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-[20px] p-5 transition duration-200 hover:-translate-y-1 hover:border-[var(--brand-accent)]/40">
+          <div className="flex min-w-[260px] flex-1 items-center gap-4">
+            <span className="flex-1 text-end text-[15px] font-bold text-white">{match.player1.name}</span>
+            <span dir="ltr" className="min-w-[64px] rounded-lg bg-white/10 px-3 py-1.5 text-center text-sm font-extrabold text-white">
+              vs
+            </span>
+            <span className="flex-1 text-start text-[15px] font-bold text-white">{match.player2.name}</span>
+          </div>
+          <div className="flex min-w-[120px] items-center justify-end gap-2 text-sm font-semibold" style={{ color: statusColorVar }}>
+            {isLive && <span className="live-dot h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--status-live)]" />}
+            {statusLabel}
+          </div>
         </div>
-        <div className="flex min-w-[120px] items-center justify-end gap-2 text-sm font-semibold" style={{ color: statusColorVar }}>
-          {isLive && <span className="live-dot h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--status-live)]" />}
-          {statusLabel}
-        </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
