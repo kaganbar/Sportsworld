@@ -10,4 +10,9 @@ export class PlayersController {
   async detail(@Param('id', ParseIntPipe) id: number, @LangParam() lang: Lang) {
     return this.players.playerDetail(id, lang);
   }
+
+  @Get('team/:teamId')
+  async roster(@Param('teamId', ParseIntPipe) teamId: number, @LangParam() lang: Lang) {
+    return this.players.teamRoster(teamId, lang);
+  }
 }

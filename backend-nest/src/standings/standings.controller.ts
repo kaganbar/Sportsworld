@@ -19,4 +19,14 @@ export class StandingsController {
   async rankingsList(@Query('tour') tour: string = 'atp', @LangParam() lang: Lang) {
     return this.standings.rankings(tour as 'atp' | 'wta', lang);
   }
+
+  @Get('top-scorers')
+  async topScorersList(
+    @Query('sport') sport: string = 'football',
+    @Query('competition') competition: string,
+    @Query('limit') limit: number = 10,
+    @LangParam() lang: Lang,
+  ) {
+    return this.standings.topScorers(sport as 'football' | 'basketball', competition, lang, Number(limit));
+  }
 }

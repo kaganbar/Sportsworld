@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { TKey, useLang } from "@/lib/i18n";
@@ -14,7 +14,11 @@ import {
   fetchTodaysGames,
   fetchVolleyballGames,
 } from "@/lib/api";
+import { EMPTY_HOME_FEED, HomeFeed, flattenHomeFeed, pickFeatured } from "@/lib/homeFeed";
 import PageShell from "@/components/page-shell";
+import FeaturedMatchHero from "@/components/featured-match-hero";
+import LiveTrackerWidget from "@/components/live-tracker-widget";
+import NewsTicker from "@/components/news-ticker";
 
 // Home hero card mark — gradient circle + glow per sport, distinct from
 // sportsTheme's ambient `glow`/`glowRgb` (wayfinding tint) since this is a
@@ -29,16 +33,16 @@ const SPORT_MARK: Record<SportKey, { gradient: string; glow: string }> = {
 
 export default function Home() {
   const { t, lang } = useLang();
-  const [liveCounts, setLiveCounts] = useState<Record<SportKey, number>>({
-    football: 0,
-    basketball: 0,
-    tennis: 0,
-    baseball: 0,
-    volleyball: 0,
-  });
+  // Full per-sport game/match arrays (not just counts) — a single shared
+  // fetch feeds liveCounts below AND FeaturedMatchHero/LiveTrackerWidget, so
+  // this page's 5 today-endpoints are only ever hit once per load/lang
+  // change rather than once for the count badges and again for the hero.
+  const [feed, setFeed] = useState<HomeFeed>(EMPTY_HOME_FEED);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setLoaded(false);
     Promise.all([
       fetchTodaysGames(lang),
       fetchBasketballGames(lang),
@@ -48,33 +52,45 @@ export default function Home() {
     ])
       .then(([football, basketball, tennis, baseball, volleyball]: [Game[], Game[], TennisMatch[], Game[], Game[]]) => {
         if (cancelled) return;
-        setLiveCounts({
-          football: football.filter((g) => g.status === "live").length,
-          basketball: basketball.filter((g) => g.status === "live").length,
-          tennis: tennis.filter((m) => m.status === "live").length,
-          baseball: baseball.filter((g) => g.status === "live").length,
-          volleyball: volleyball.filter((g) => g.status === "live").length,
-        });
+        setFeed({ football, basketball, tennis, baseball, volleyball });
+        setLoaded(true);
       })
       .catch(() => {
-        /* home hero degrades to a 0 live-count badge, not an error state */
+        if (cancelled) return;
+        // home hero/widgets degrade to their empty states, not an error state
+        setFeed(EMPTY_HOME_FEED);
+        setLoaded(true);
       });
     return () => {
       cancelled = true;
     };
   }, [lang]);
 
+  const liveCounts = useMemo<Record<SportKey, number>>(
+    () => ({
+      football: feed.football.filter((g) => g.status === "live").length,
+      basketball: feed.basketball.filter((g) => g.status === "live").length,
+      tennis: feed.tennis.filter((m) => m.status === "live").length,
+      baseball: feed.baseball.filter((g) => g.status === "live").length,
+      volleyball: feed.volleyball.filter((g) => g.status === "live").length,
+    }),
+    [feed],
+  );
+
+  const { featured, liveItems } = useMemo(() => {
+    const all = flattenHomeFeed(feed);
+    const featured = pickFeatured(all);
+    const liveItems = all.filter(
+      (i) => i.status === "live" && !(featured && i.sport === featured.sport && i.id === featured.id),
+    );
+    return { featured, liveItems };
+  }, [feed]);
+
   return (
     <PageShell maxWidth="max-w-6xl">
-      <div className="px-2 pb-16 pt-8 text-center">
-        <div className="mb-6 inline-block rounded-full border border-[var(--brand-accent)]/35 bg-[var(--brand-accent)]/[0.08] px-4 py-1.5 text-xs font-bold tracking-widest text-[var(--brand-accent)]">
-          {t("heroKicker")}
-        </div>
-        <h1 className="mx-auto max-w-3xl bg-[linear-gradient(135deg,#ffffff,#a9d9ff_60%,#7c5cff)] bg-clip-text text-4xl font-extrabold leading-tight tracking-tight text-transparent sm:text-5xl">
-          {t("heroTitle")}
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl leading-relaxed text-white/60">{t("heroSubtitle")}</p>
-      </div>
+      <FeaturedMatchHero featured={featured} loaded={loaded} />
+      <NewsTicker />
+      <LiveTrackerWidget items={liveItems} />
 
       <div className="flex flex-wrap justify-center gap-6 px-2 pb-10">
         {(Object.keys(sportsTheme) as SportKey[]).map((key) => {

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { useLang } from "@/lib/i18n";
-import { NewsArticle, fetchNews } from "@/lib/api";
+import { NewsCluster, fetchNewsClusters } from "@/lib/api";
+import { timeAgo } from "@/lib/timeAgo";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ComingSoonPage } from "@/components/coming-soon";
@@ -13,29 +14,21 @@ import PageShell from "@/components/page-shell";
 // reasoning as Transfers' neutral amber.
 const ACCENT = "#4f8ef7";
 
-function timeAgo(iso: string, lang: string) {
-  return new Date(iso).toLocaleString(lang === "he" ? "he-IL" : "en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export default function NewsPage() {
   const { t, lang } = useLang();
-  const [articles, setArticles] = useState<NewsArticle[] | null>(null);
+  const [clusters, setClusters] = useState<NewsCluster[] | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetchNews(30)
-      .then(setArticles)
+    fetchNewsClusters(lang, 30)
+      .then(setClusters)
       .catch(() => setError(true));
-  }, []);
+  }, [lang]);
 
-  // NEWS_API_KEY isn't configured (or the request failed) — no raw data to
-  // show, fall back to the same "coming soon" shell every other new module uses.
-  if (error || articles?.length === 0) {
+  // No clusters (agent hasn't ingested anything yet, or the request
+  // failed) — fall back to the same "coming soon" shell every other new
+  // module uses.
+  if (error || clusters?.length === 0) {
     return <ComingSoonPage icon="📰" titleKey="nav_news" descriptionKey="desc_news" />;
   }
 
@@ -44,7 +37,7 @@ export default function NewsPage() {
       <h1 className="mb-1 text-2xl font-bold leading-snug text-white">{t("nav_news")}</h1>
       <p className="mb-6 text-sm leading-relaxed text-white/60">{t("newsRawNote")}</p>
 
-      {!articles && (
+      {!clusters && (
         <div className="space-y-3">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
@@ -53,19 +46,31 @@ export default function NewsPage() {
       )}
 
       <div className="space-y-3">
-        {articles?.map((article) => (
-          <a key={article.id} href={article.url} target="_blank" rel="noopener noreferrer">
-            <Card variant="glass" className="p-4 transition hover:shadow-glow">
-              <div className="mb-1 flex items-center justify-between text-xs text-white/50">
-                <span>{article.source}</span>
-                <span>{timeAgo(article.published_at, lang)}</span>
-              </div>
-              <CardContent className="p-0">
-                <h2 className="font-semibold leading-snug text-white">{article.title}</h2>
-                {article.summary && <p className="mt-1 text-sm leading-relaxed text-white/70">{article.summary}</p>}
-              </CardContent>
-            </Card>
-          </a>
+        {clusters?.map((cluster) => (
+          <Card key={cluster.id} variant="glass" className="p-4">
+            <div className="mb-1 text-xs text-white/50">{timeAgo(cluster.updated_at, lang)}</div>
+            <CardContent className="p-0">
+              <h2 className="font-semibold leading-snug text-white">{cluster.headline}</h2>
+              {cluster.summary && <p className="mt-1 text-sm leading-relaxed text-white/70">{cluster.summary}</p>}
+
+              {cluster.articles.length > 0 && (
+                <ul className="mt-3 space-y-1 border-t border-white/10 pt-2">
+                  {cluster.articles.map((article, i) => (
+                    <li key={`${article.url}-${i}`} className="text-xs text-white/50">
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-white hover:underline"
+                      >
+                        {article.source} — {article.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         ))}
       </div>
     </PageShell>

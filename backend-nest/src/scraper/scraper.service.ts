@@ -5,6 +5,7 @@ import { Parser } from './parsers/parser.interface';
 import { Scores365FootballParser } from './parsers/scores365/scores365-football.parser';
 import { Scores365BasketballParser } from './parsers/scores365/scores365-basketball.parser';
 import { Scores365TennisParser } from './parsers/scores365/scores365-tennis.parser';
+import { FootballDataFootballParser } from './parsers/football-data/football-data-football.parser';
 import { NormalizeService } from './normalize.service';
 
 const POLL_MS = 45000;
@@ -25,10 +26,15 @@ export class ScraperService implements OnApplicationBootstrap {
     football: Scores365FootballParser,
     basketball: Scores365BasketballParser,
     tennis: Scores365TennisParser,
+    footballData: FootballDataFootballParser,
     private readonly normalize: NormalizeService,
     private readonly config: ConfigService,
   ) {
-    this.parsers = [football, basketball, tennis];
+    // footballData (~1.3 calls/min on this 45s loop) stays well under its
+    // own 10/min budget alongside the 3 365scores parsers, which don't
+    // share that budget at all (different provider/key) — balldontlie is
+    // the one source NOT on this shared loop, see BalldontlieSchedulerService.
+    this.parsers = [football, basketball, tennis, footballData];
   }
 
   private get enabled(): boolean {

@@ -46,6 +46,7 @@ export class NormalizeService {
     color: string | undefined,
     country: string | undefined,
     sport: 'football' | 'basketball',
+    logoUrl?: string,
   ) {
     return this.prisma.team.upsert({
       where: { name },
@@ -53,6 +54,7 @@ export class NormalizeService {
         ...(shortName ? { shortName } : {}),
         ...(color ? { primaryColor: color } : {}),
         ...(country ? { country } : {}),
+        ...(logoUrl ? { logoUrl } : {}),
       },
       create: {
         name,
@@ -60,6 +62,8 @@ export class NormalizeService {
         shortName: shortName ?? name.slice(0, 3).toUpperCase(),
         country: country ?? '',
         primaryColor: color ?? '#1E7B34',
+        logoUrl: logoUrl ?? null,
+        isReal: true,
       },
     });
   }
@@ -74,8 +78,8 @@ export class NormalizeService {
     ]);
 
     const [homeTeam, awayTeam] = await Promise.all([
-      this.upsertTeam(event.homeName, event.homeShortName, event.homeColor, event.homeCountry, sport),
-      this.upsertTeam(event.awayName, event.awayShortName, event.awayColor, event.awayCountry, sport),
+      this.upsertTeam(event.homeName, event.homeShortName, event.homeColor, event.homeCountry, sport, event.homeLogoUrl),
+      this.upsertTeam(event.awayName, event.awayShortName, event.awayColor, event.awayCountry, sport, event.awayLogoUrl),
     ]);
 
     const competitionRow = await this.competitions.resolveCompetition(sport, event.competition);
@@ -117,6 +121,7 @@ export class NormalizeService {
         homeScore: event.homeScore,
         awayScore: event.awayScore,
         minute: sport === 'football' ? (event.minute ?? null) : null,
+        isReal: true,
       },
     });
 

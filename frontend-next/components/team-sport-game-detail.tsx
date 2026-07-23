@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useLiveGame } from "@/hooks/useLiveGame";
 import { deriveKeyPlayer } from "@/lib/key-player";
 import { Lang, TKey, useLang } from "@/lib/i18n";
+import { translateBasketballPosition } from "@/lib/positions";
 import { FormStats, Game, GameStats, GameStatsSide, InjuryEntry, LineupEntry, PastResult } from "@/lib/api";
 import { StatRowSchema } from "@/theme/statSchema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,8 +71,8 @@ function StatsColumn({ label, stats }: { label: string; stats: FormStats }) {
   );
 }
 
-function LineupList({ entries }: { entries: LineupEntry[] }) {
-  const { t } = useLang();
+function LineupList({ entries, sport }: { entries: LineupEntry[]; sport: "basketball" | "baseball" | "volleyball" }) {
+  const { t, lang } = useLang();
   const starters = entries.filter((e) => e.is_starting);
   const bench = entries.filter((e) => !e.is_starting);
   return (
@@ -80,7 +81,10 @@ function LineupList({ entries }: { entries: LineupEntry[] }) {
         {starters.map((p) => (
           <li key={p.shirt_number}>
             <span className="me-2 inline-block w-6 text-center font-mono text-muted-foreground">{p.shirt_number}</span>
-            {p.name} <span className="text-muted-foreground">{p.position}</span>
+            {p.name}{" "}
+            <span className="text-muted-foreground">
+              {sport === "basketball" ? translateBasketballPosition(lang, p.position) : p.position}
+            </span>
           </li>
         ))}
       </ul>
@@ -207,6 +211,7 @@ export default function TeamSportGameDetail<
                   name={keyPlayer.name}
                   team={keyPlayer.team}
                   position={keyPlayer.position}
+                  sport={sport}
                   href={`/${sport}/players/${keyPlayer.id}`}
                 />
               )}
@@ -262,11 +267,11 @@ export default function TeamSportGameDetail<
                 <CardContent className="grid grid-cols-2 gap-4">
                   <div>
                     <h4 className="mb-2 font-semibold">{data.game.home_team.name}</h4>
-                    <LineupList entries={data.lineups.home} />
+                    <LineupList entries={data.lineups.home} sport={sport} />
                   </div>
                   <div>
                     <h4 className="mb-2 font-semibold">{data.game.away_team.name}</h4>
-                    <LineupList entries={data.lineups.away} />
+                    <LineupList entries={data.lineups.away} sport={sport} />
                   </div>
                 </CardContent>
               </Card>

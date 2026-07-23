@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AgentCallerService } from '../common/agent-caller.service';
-import { CompetitionsService } from '../../competitions/competitions.service';
+import { CompetitionsService, SportKey } from '../../competitions/competitions.service';
 import { TranslationsService } from '../../translations/translations.service';
 import { Lang } from '../../common/lang.decorator';
 import { NewsClusterSummarySchema, NewsClusterSummary } from './news-agent.schema';
@@ -12,7 +12,14 @@ sports news articles that have all been grouped as covering the SAME underlying 
 it was published.
 
 Write one concise headline and a short neutral summary that synthesizes what all the
-articles are reporting into a single coherent story.`;
+articles are reporting into a single coherent story.
+
+You must produce BOTH an English version (headline, summary) AND a Hebrew version
+(headlineHe, summaryHe). The Hebrew version must be written natively by a professional
+Hebrew sports journalist — natural idiomatic phrasing and word order, the same quality
+bar as a real Hebrew sports outlet — NOT a literal or machine translation of the English
+text. Write each language version independently so it reads as an original, not a
+translated copy.`;
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
@@ -103,6 +110,8 @@ export class NewsAgentService {
     return {
       headline: '[Mock] Simulated cluster headline',
       summary: `[Mock] Simulated synthesis across ${articleCount} article(s). No real Claude API call was made.`,
+      headlineHe: '[מוק] כותרת מדומה לאשכול החדשות',
+      summaryHe: `[מוק] סינתזה מדומה על פני ${articleCount} כתבות. לא בוצעה קריאה אמיתית ל-API של קלוד.`,
     };
   }
 
@@ -167,8 +176,13 @@ export class NewsAgentService {
   }
 
   private async summarizeUnsummarizedClusters() {
+    // Also catches clusters summarized before headlineHe/summaryHe existed
+    // (a one-time catch-up backfill, 2026-07-22) — once a cluster has both,
+    // this condition collapses back to `summary: null` for it, so this
+    // isn't a permanent double-processing cost, just self-healing for any
+    // row that's missing either half.
     const unsummarized = await this.prisma.newsStoryCluster.findMany({
-      where: { summary: null },
+      where: { OR: [{ summary: null }, { headlineHe: null }] },
       include: { articles: { include: { source: true } } },
     });
 
@@ -194,7 +208,12 @@ export class NewsAgentService {
 
       await this.prisma.newsStoryCluster.update({
         where: { id: cluster.id },
-        data: { headline: result.headline, summary: result.summary },
+        data: {
+          headline: result.headline,
+          summary: result.summary,
+          headlineHe: result.headlineHe,
+          summaryHe: result.summaryHe,
+        },
       });
       // Re-tag with the fuller summarized text — more team-name surface
       // area than the raw first-article headline used at cluster creation.
@@ -202,8 +221,23 @@ export class NewsAgentService {
     }
   }
 
-  async listClusters(limit = 30) {
+  /** competitionSlug requires sportKey too (slugs are only unique per
+   * sport), same requirement as NewsService.recentArticles. lang picks
+   * headlineHe/summaryHe (AI-generated Hebrew, see clusterAndSummarize)
+   * when present, falling back to the English column — same
+   * graceful-degradation philosophy as TranslationsService.translate,
+   * but sourced from the agent's own output rather than the static
+   * dictionary (free-form article text can't be dictionary-translated). */
+  async listClusters(limit = 30, lang: Lang = 'en', sportKey?: SportKey, competitionSlug?: string) {
+    let competitionId: number | undefined;
+    if (sportKey && competitionSlug) {
+      const row = await this.competitions.findBySlug(sportKey, competitionSlug);
+      if (!row) return [];
+      competitionId = row.id;
+    }
+
     const clusters = await this.prisma.newsStoryCluster.findMany({
+      where: competitionId ? { competitions: { some: { id: competitionId } } } : {},
       orderBy: { updatedAt: 'desc' },
       take: limit,
       include: { articles: { include: { source: true }, orderBy: { publishedAt: 'desc' } } },
@@ -211,8 +245,8 @@ export class NewsAgentService {
 
     return clusters.map((c) => ({
       id: c.id,
-      headline: c.headline,
-      summary: c.summary,
+      headline: lang === 'he' && c.headlineHe ? c.headlineHe : c.headline,
+      summary: lang === 'he' && c.summaryHe ? c.summaryHe : c.summary,
       sport: c.sport,
       articles: c.articles.map((a) => ({
         title: a.title,

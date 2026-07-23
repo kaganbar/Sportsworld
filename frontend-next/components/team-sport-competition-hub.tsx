@@ -1,24 +1,36 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import ThemeLayout from "@/components/theme-layout";
 import GameCard from "@/components/game-card";
+import TeamBadge from "@/components/team-badge";
+import SimulatedBadge from "@/components/simulated-badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Lang, useLang } from "@/lib/i18n";
+import { Lang, TKey, useLang } from "@/lib/i18n";
 import {
   Game,
-  NewsArticle,
-  TransferRumour,
+  NewsCluster,
+  TransferStory,
   StandingsRow,
   fetchCompetitions,
   fetchStandings,
-  fetchNews,
-  fetchTransfers,
+  fetchNewsClusters,
+  fetchTransferStories,
 } from "@/lib/api";
+import { timeAgo } from "@/lib/timeAgo";
 import { competitionAccents } from "@/theme/sportsTheme";
+
+const transferStatusKey: Record<TransferStory["status"], TKey> = {
+  rumor: "transferStatus_rumor",
+  official: "transferStatus_official",
+  completed: "transferStatus_completed",
+  denied: "transferStatus_denied",
+};
 
 // Shared by the 4 team sports' [competition]/page.tsx (football/basketball/
 // baseball/volleyball) — these were copy-pasted file-for-file, differing
@@ -41,8 +53,8 @@ export default function TeamSportCompetitionHub({
   const [label, setLabel] = useState<string | undefined>(undefined);
   const [games, setGames] = useState<Game[] | null>(null);
   const [standings, setStandings] = useState<StandingsRow[] | null>(null);
-  const [news, setNews] = useState<NewsArticle[] | null>(null);
-  const [transfers, setTransfers] = useState<TransferRumour[] | null>(null);
+  const [news, setNews] = useState<NewsCluster[] | null>(null);
+  const [transfers, setTransfers] = useState<TransferStory[] | null>(null);
 
   useEffect(() => {
     fetchCompetitions(sport, lang).then((list) => setLabel(list.find((c) => c.slug === competition)?.name));
@@ -54,10 +66,10 @@ export default function TeamSportCompetitionHub({
     fetchStandings(sport, competition, lang).then(setStandings);
   }, [sport, lang, competition]);
   useEffect(() => {
-    fetchNews(30, sport, competition).then(setNews);
+    fetchNewsClusters(lang, 30, sport, competition).then(setNews);
   }, [sport, lang, competition]);
   useEffect(() => {
-    fetchTransfers(30, sport, competition).then(setTransfers);
+    fetchTransferStories(lang, 30, sport, competition).then(setTransfers);
   }, [sport, lang, competition]);
 
   const live = games?.filter((g) => g.status === "live") ?? [];
@@ -108,20 +120,26 @@ export default function TeamSportCompetitionHub({
                   <thead>
                     <tr className="text-white/60">
                       <th scope="col" className="px-2 py-1 text-start">#</th>
-                      <th scope="col" className="px-2 py-1 text-start">Team</th>
+                      <th scope="col" className="px-2 py-1 text-start">{t("tableTeam")}</th>
                       <th scope="col" className="px-2 py-1">P</th>
                       <th scope="col" className="px-2 py-1">{t("winsAbbr")}</th>
                       {showDraws && <th scope="col" className="px-2 py-1">{t("drawsAbbr")}</th>}
                       <th scope="col" className="px-2 py-1">{t("lossesAbbr")}</th>
-                      {showDraws && <th scope="col" className="px-2 py-1">GD</th>}
-                      <th scope="col" className="px-2 py-1">Pts</th>
+                      {showDraws && <th scope="col" className="px-2 py-1">{t("tableGD")}</th>}
+                      <th scope="col" className="px-2 py-1">{t("tablePts")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {standings.map((row, i) => (
                       <tr key={row.team_id} className="border-t border-white/10">
                         <td className="px-2 py-1">{i + 1}</td>
-                        <th scope="row" className="px-2 py-1 text-start font-medium">{row.team_name}</th>
+                        <th scope="row" className="px-2 py-1 text-start font-medium">
+                          <Link href={`/${sport}/teams/${row.team_id}`} className="flex items-center gap-2 hover:underline">
+                            <TeamBadge name={row.team_name} logoUrl={row.logo_url} size={20} />
+                            {row.team_name}
+                            {row.team_is_real === false && <SimulatedBadge />}
+                          </Link>
+                        </th>
                         <td className="px-2 py-1 text-center">{row.played}</td>
                         <td className="px-2 py-1 text-center">{row.wins}</td>
                         {showDraws && <td className="px-2 py-1 text-center">{row.draws}</td>}
@@ -140,13 +158,24 @@ export default function TeamSportCompetitionHub({
         <TabsContent value="news" className="space-y-3">
           {!news && <Skeleton className="h-16 w-full" />}
           {news && news.length === 0 && <p className="text-white/70">{t("newsEmpty")}</p>}
-          {news?.map((a) => (
-            <Card key={a.id} variant="glass" className="p-4">
-              <a href={a.url} target="_blank" rel="noopener noreferrer" className="font-medium text-white hover:underline">
-                {a.title}
-              </a>
-              {a.summary && <p className="mt-1 text-sm text-white/70">{a.summary}</p>}
-              <p className="mt-1 text-xs text-white/50">{a.source}</p>
+          {news?.map((cluster) => (
+            <Card key={cluster.id} variant="glass" className="p-4">
+              <p className="font-medium text-white">{cluster.headline}</p>
+              {cluster.summary && <p className="mt-1 text-sm text-white/70">{cluster.summary}</p>}
+              {cluster.articles.length > 0 && (
+                <p className="mt-1 truncate text-xs text-white/50">
+                  {cluster.articles.map((a, i) => (
+                    <span key={`${a.url}-${i}`}>
+                      {i > 0 && " · "}
+                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="hover:text-white hover:underline">
+                        {a.source}
+                      </a>
+                    </span>
+                  ))}
+                  {" · "}
+                  {timeAgo(cluster.updated_at, lang)}
+                </p>
+              )}
             </Card>
           ))}
         </TabsContent>
@@ -154,16 +183,38 @@ export default function TeamSportCompetitionHub({
         <TabsContent value="transfers" className="space-y-3">
           {!transfers && <Skeleton className="h-16 w-full" />}
           {transfers && transfers.length === 0 && <p className="text-white/70">{t("transfersEmpty")}</p>}
-          {transfers?.map((r) => (
-            <Card key={r.id} variant="glass" className="p-4">
-              <p className="font-medium text-white">
-                {r.player_name} {r.from_club ? `(${r.from_club} → ${r.to_club})` : `→ ${r.to_club}`}
+          {transfers?.map((story) => (
+            <Card key={story.id} variant="glass" className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium text-white">
+                  {story.player_name} {story.from_club ? `(${story.from_club} → ${story.to_club})` : `→ ${story.to_club}`}
+                </p>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Badge variant="secondary">{t(transferStatusKey[story.status])}</Badge>
+                  {story.estimated_probability != null && (
+                    <Badge className="border-transparent bg-[var(--brand-accent)]/20 text-[var(--status-upcoming)]">
+                      {story.estimated_probability}%
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <p className="mt-1 text-sm text-white/70">
+                {story.ai_summary ?? `${story.from_club ? `${story.from_club} → ` : ""}${story.to_club}`}
               </p>
-              <p className="mt-1 text-sm text-white/70">{r.description}</p>
-              <p className="mt-1 text-xs text-white/50">
-                {r.source}
-                {r.source_probability != null ? ` · ${r.source_probability}%` : ""}
-              </p>
+              {story.reports.length > 0 && (
+                <p className="mt-1 truncate text-xs text-white/50">
+                  {story.reports.map((r, i) => (
+                    <span key={`${r.source_url}-${i}`}>
+                      {i > 0 && " · "}
+                      <a href={r.source_url} target="_blank" rel="noopener noreferrer" className="hover:text-white hover:underline">
+                        {r.source}
+                      </a>
+                    </span>
+                  ))}
+                  {" · "}
+                  {timeAgo(story.updated_at, lang)}
+                </p>
+              )}
             </Card>
           ))}
         </TabsContent>

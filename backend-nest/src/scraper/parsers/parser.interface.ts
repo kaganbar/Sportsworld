@@ -34,6 +34,7 @@ export interface NormalizedEvent {
   homeColor?: string;
   homeCountry?: string;
   homeRanking?: number | null; // tennis only
+  homeLogoUrl?: string; // team-sport only; real crest URL where a source provides one
 
   awayName: string;
   awayNameHe?: string;
@@ -41,6 +42,7 @@ export interface NormalizedEvent {
   awayColor?: string;
   awayCountry?: string;
   awayRanking?: number | null; // tennis only
+  awayLogoUrl?: string; // team-sport only; real crest URL where a source provides one
 
   homeScore: number | null;
   awayScore: number | null;

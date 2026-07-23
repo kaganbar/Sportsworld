@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 import { useLiveGame } from "@/hooks/useLiveGame";
 import { useFadeUpReveal } from "@/hooks/useFadeUpReveal";
+import TeamBadge from "@/components/team-badge";
+import SimulatedBadge from "@/components/simulated-badge";
 import { TKey } from "@/lib/i18n";
 import { Game } from "@/lib/api";
 
@@ -54,25 +57,49 @@ export default function GameCard({
       : timeOf(live.kickoff);
   const statusColorVar = isLive ? "var(--status-live)" : isFinished ? "var(--status-finished)" : "var(--status-upcoming)";
 
+  // Score display has no visual feedback of its own when a goal lands — it
+  // just snaps to the new number. Remounting the pill on a key derived from
+  // both scores (rather than a separate "did it change" boolean + timer)
+  // gets the enter animation for free from framer-motion's initial/animate
+  // diffing: whenever either score changes, React sees a new key, treats it
+  // as a fresh element, and plays `initial` -> `animate` once more.
+  const scoreKey = `${live.home_score}-${live.away_score}`;
+
   return (
     <div ref={revealRef} className="fade-up">
       <Link href={`/${sport}/games/${live.id}`}>
-        <div className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-[20px] p-5 transition duration-200 hover:-translate-y-1 hover:border-[var(--brand-accent)]/40">
+        <motion.div
+          className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-[20px] p-5 transition-colors duration-200 hover:border-[var(--brand-accent)]/40"
+          whileHover={{ y: -4 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        >
           <div className="flex min-w-[260px] flex-1 items-center gap-4">
-            <span className="flex-1 text-end text-[15px] font-bold text-white">{live.home_team.name}</span>
-            <span
+            <span className="flex flex-1 items-center justify-end gap-2">
+              <span className="text-end text-[15px] font-bold text-white">{live.home_team.name}</span>
+              <TeamBadge name={live.home_team.name} logoUrl={live.home_team.logo_url} color={live.home_team.primary_color} size={22} />
+            </span>
+            <motion.span
+              key={scoreKey}
               dir="ltr"
-              className="min-w-[64px] rounded-lg bg-white/10 px-3 py-1.5 text-center text-lg font-extrabold text-white"
+              initial={{ scale: 1.32, backgroundColor: "rgba(56,189,248,0.5)" }}
+              animate={{ scale: 1, backgroundColor: "rgba(255,255,255,0.1)" }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="min-w-[64px] rounded-lg px-3 py-1.5 text-center text-lg font-extrabold text-white"
             >
               {live.status === "scheduled" ? timeOf(live.kickoff) : `${live.home_score ?? "-"} - ${live.away_score ?? "-"}`}
+            </motion.span>
+            <span className="flex flex-1 items-center justify-start gap-2">
+              <TeamBadge name={live.away_team.name} logoUrl={live.away_team.logo_url} color={live.away_team.primary_color} size={22} />
+              <span className="text-start text-[15px] font-bold text-white">{live.away_team.name}</span>
             </span>
-            <span className="flex-1 text-start text-[15px] font-bold text-white">{live.away_team.name}</span>
           </div>
           <div className="flex min-w-[120px] items-center justify-end gap-2 text-sm font-semibold" style={{ color: statusColorVar }}>
+            {live.is_real === false && <SimulatedBadge />}
             {isLive && <span className="live-dot h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--status-live)]" />}
             {statusLabel}
           </div>
-        </div>
+        </motion.div>
       </Link>
     </div>
   );

@@ -6,6 +6,7 @@ import AiAnalysisPanel from "@/components/ai-analysis-panel";
 import ThemeLayout from "@/components/theme-layout";
 import StatBarRow from "@/components/stat-bar-row";
 import KeyPlayerCard from "@/components/key-player-card";
+import MatchEventTimeline from "@/components/match-event-timeline";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useLiveGame } from "@/hooks/useLiveGame";
 import { deriveKeyPlayer } from "@/lib/key-player";
@@ -151,6 +152,7 @@ export default function GameDetail({ params }: { params: { id: string } }) {
           <Tabs defaultValue="overview" className="mb-6">
             <TabsList className="mb-6">
               <TabsTrigger value="overview">{t("tab_overview")}</TabsTrigger>
+              {data.events.length > 0 && <TabsTrigger value="events">{t("tab_matchEvents")}</TabsTrigger>}
               <TabsTrigger value="ai">{t("tab_ai")}</TabsTrigger>
             </TabsList>
 
@@ -249,6 +251,12 @@ export default function GameDetail({ params }: { params: { id: string } }) {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {data.events.length > 0 && (
+              <TabsContent value="events" className="space-y-3">
+                <MatchEventTimeline events={data.events} homeTeamId={data.game.home_team.id} />
+              </TabsContent>
+            )}
 
             <TabsContent value="ai">
               <AiAnalysisPanel

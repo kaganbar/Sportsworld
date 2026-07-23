@@ -10,13 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLang } from "@/lib/i18n";
 import {
   TennisMatch,
-  NewsArticle,
+  NewsCluster,
   RankingEntry,
   fetchTennisMatches,
   fetchCompetitions,
   fetchRankings,
-  fetchNews,
+  fetchNewsClusters,
 } from "@/lib/api";
+import { timeAgo } from "@/lib/timeAgo";
 import { competitionAccents } from "@/theme/sportsTheme";
 
 // Only the tour-wide buckets have a "rankings" concept — Slam/event
@@ -33,7 +34,7 @@ export default function TennisCompetitionHub({ params }: { params: { competition
   const [label, setLabel] = useState<string | undefined>(undefined);
   const [matches, setMatches] = useState<TennisMatch[] | null>(null);
   const [rankings, setRankings] = useState<RankingEntry[] | null>(null);
-  const [news, setNews] = useState<NewsArticle[] | null>(null);
+  const [news, setNews] = useState<NewsCluster[] | null>(null);
 
   const tour = RANKED_TOURS[competition];
 
@@ -47,7 +48,7 @@ export default function TennisCompetitionHub({ params }: { params: { competition
     if (tour) fetchRankings(tour, lang).then(setRankings);
   }, [tour, lang]);
   useEffect(() => {
-    fetchNews(30, "tennis", competition).then(setNews);
+    fetchNewsClusters(lang, 30, "tennis", competition).then(setNews);
   }, [lang, competition]);
 
   const live = matches?.filter((m) => m.status === "live") ?? [];
@@ -98,8 +99,8 @@ export default function TennisCompetitionHub({ params }: { params: { competition
                     <thead>
                       <tr className="text-white/60">
                         <th scope="col" className="px-2 py-1 text-start">#</th>
-                        <th scope="col" className="px-2 py-1 text-start">Player</th>
-                        <th scope="col" className="px-2 py-1 text-start">Country</th>
+                        <th scope="col" className="px-2 py-1 text-start">{t("tablePlayer")}</th>
+                        <th scope="col" className="px-2 py-1 text-start">{t("tableCountry")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -121,13 +122,24 @@ export default function TennisCompetitionHub({ params }: { params: { competition
         <TabsContent value="news" className="space-y-3">
           {!news && <Skeleton className="h-16 w-full" />}
           {news && news.length === 0 && <p className="text-white/70">{t("newsEmpty")}</p>}
-          {news?.map((a) => (
-            <Card key={a.id} variant="glass" className="p-4">
-              <a href={a.url} target="_blank" rel="noopener noreferrer" className="font-medium text-white hover:underline">
-                {a.title}
-              </a>
-              {a.summary && <p className="mt-1 text-sm text-white/70">{a.summary}</p>}
-              <p className="mt-1 text-xs text-white/50">{a.source}</p>
+          {news?.map((cluster) => (
+            <Card key={cluster.id} variant="glass" className="p-4">
+              <p className="font-medium text-white">{cluster.headline}</p>
+              {cluster.summary && <p className="mt-1 text-sm text-white/70">{cluster.summary}</p>}
+              {cluster.articles.length > 0 && (
+                <p className="mt-1 truncate text-xs text-white/50">
+                  {cluster.articles.map((a, i) => (
+                    <span key={`${a.url}-${i}`}>
+                      {i > 0 && " · "}
+                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="hover:text-white hover:underline">
+                        {a.source}
+                      </a>
+                    </span>
+                  ))}
+                  {" · "}
+                  {timeAgo(cluster.updated_at, lang)}
+                </p>
+              )}
             </Card>
           ))}
         </TabsContent>

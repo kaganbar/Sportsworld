@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Player" ADD COLUMN     "isReal" BOOLEAN NOT NULL DEFAULT false,
+ALTER COLUMN "shirtNumber" DROP NOT NULL;

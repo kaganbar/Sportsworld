@@ -182,3 +182,31 @@
     transform: translateY(0);
   }
 }
+
+@layer components {
+  /* NewsTicker's marquee — see components/news-ticker.tsx. The headline
+     list is duplicated once in the DOM, so translateX(-50%) moves exactly
+     one copy's width and the loop point is seamless. `.rtl` doesn't define
+     its own keyframes — it just plays the same ones in reverse
+     (0% -> -50% becomes -50% -> 0%), which is the mirror-image motion
+     without duplicating the animation. Paused on hover so a headline is
+     actually clickable/readable. */
+  .news-ticker-track {
+    animation: news-scroll 38s linear infinite;
+  }
+  .news-ticker-track.rtl {
+    animation-direction: reverse;
+  }
+  .news-ticker:hover .news-ticker-track {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes news-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}

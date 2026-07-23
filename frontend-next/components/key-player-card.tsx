@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 
-import { useLang } from "@/lib/i18n";
+import { useLang, translateFootballPosition } from "@/lib/i18n";
+import { translateBasketballPosition } from "@/lib/positions";
 
 // Match-detail Overview tab's "Key Player" card — links through to the
 // player profile screen. Avatar is a gradient placeholder (no photo assets
@@ -11,14 +12,22 @@ export default function KeyPlayerCard({
   name,
   team,
   position,
+  sport,
   href,
 }: {
   name: string;
   team: string;
   position: string;
+  // See the same prop on PlayerProfileCard — gates which position-code
+  // vocabulary (football's GK/DF/MF/FW vs basketball's PG/SG/.../G/F/C) to
+  // translate through; omitted callers (baseball/volleyball/tennis) just
+  // show `position` untranslated, same as before this prop existed.
+  sport?: string;
   href: string;
 }) {
   const { t, lang } = useLang();
+  const displayPosition =
+    sport === "basketball" ? translateBasketballPosition(lang, position) : translateFootballPosition(t, position);
   return (
     <Link
       href={href}
@@ -29,7 +38,7 @@ export default function KeyPlayerCard({
         <div className="mb-1 text-xs font-bold tracking-wide text-[var(--status-upcoming)]">{t("keyPlayer")}</div>
         <div className="truncate text-[17px] font-bold text-white">{name}</div>
         <div className="truncate text-sm text-white/55">
-          {team} · {position}
+          {team} · {displayPosition}
         </div>
       </div>
       {/* The "points toward more content" chevron flips with reading

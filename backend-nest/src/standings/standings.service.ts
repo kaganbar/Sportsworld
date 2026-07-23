@@ -11,7 +11,7 @@ import { Lang } from '../common/lang.decorator';
 const STANDINGS_CACHE_TTL_SECONDS = 300;
 
 interface Accum {
-  team: { id: number; name: string; shortName: string };
+  team: { id: number; name: string; shortName: string; logoUrl: string | null; isReal: boolean };
   played: number;
   wins: number;
   draws: number;
@@ -53,7 +53,7 @@ export class StandingsService {
     });
 
     const table = new Map<number, Accum>();
-    const ensure = (team: { id: number; name: string; shortName: string }) => {
+    const ensure = (team: { id: number; name: string; shortName: string; logoUrl: string | null; isReal: boolean }) => {
       let row = table.get(team.id);
       if (!row) {
         row = { team, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 };
@@ -96,6 +96,8 @@ export class StandingsService {
       team_id: r.team.id,
       team_name: nameMap[r.team.name] ?? r.team.name,
       short_name: r.team.shortName,
+      logo_url: r.team.logoUrl,
+      team_is_real: r.team.isReal,
       played: r.played,
       wins: r.wins,
       draws: r.draws,
@@ -107,6 +109,68 @@ export class StandingsService {
     }));
 
     rows.sort((a, b) => b.points - a.points || b.goal_diff - a.goal_diff || b.goals_for - a.goals_for);
+
+    await this.redis.set(cacheKey, JSON.stringify(rows), STANDINGS_CACHE_TTL_SECONDS);
+    return rows;
+  }
+
+  /**
+   * Top scorers, derived from actual `MatchEvent` goal rows for this
+   * competition — deliberately NOT `Player.seasonStats.goals` (a separate
+   * random season-stat blob generated independently of any specific game's
+   * events), which would silently disagree with the goal/card timeline a
+   * game-detail page shows for the same players. Counting real events keeps
+   * standings, top-scorers, and the match timeline all derived from the one
+   * MatchEvent/Game generation pass — same "computed, not stored" judgment
+   * as `standings()` above, just sourced from the finer-grained model.
+   */
+  async topScorers(sportKey: 'football' | 'basketball', competitionSlug: string, lang: Lang, limit = 10) {
+    const cacheKey = `top-scorers:${sportKey}:${competitionSlug}:${lang}:${limit}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    const competition = await this.competitions.findBySlug(sportKey, competitionSlug);
+    if (!competition) return [];
+
+    const goalCounts = await this.prisma.matchEvent.groupBy({
+      by: ['playerId'],
+      where: {
+        type: { in: ['goal', 'penalty_goal'] },
+        playerId: { not: null },
+        game: { is: { sport: sportKey, competitionId: competition.id } },
+      },
+      _count: { _all: true },
+      orderBy: { _count: { playerId: 'desc' } },
+      take: limit,
+    });
+    if (goalCounts.length === 0) return [];
+
+    const players = await this.prisma.player.findMany({
+      where: { id: { in: goalCounts.map((g) => g.playerId!) } },
+      include: { team: true },
+    });
+    const byId = new Map(players.map((p) => [p.id, p]));
+
+    const nameMap = await this.translations.translateMany(
+      [...players.map((p) => p.name), ...players.map((p) => p.team.name)],
+      lang,
+    );
+
+    const rows = goalCounts
+      .map((g) => {
+        const p = byId.get(g.playerId!);
+        if (!p) return null;
+        return {
+          player_id: p.id,
+          player_name: nameMap[p.name] ?? p.name,
+          team_id: p.teamId,
+          team_name: nameMap[p.team.name] ?? p.team.name,
+          team_logo_url: p.team.logoUrl,
+          team_is_real: p.team.isReal,
+          goals: g._count._all,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
 
     await this.redis.set(cacheKey, JSON.stringify(rows), STANDINGS_CACHE_TTL_SECONDS);
     return rows;

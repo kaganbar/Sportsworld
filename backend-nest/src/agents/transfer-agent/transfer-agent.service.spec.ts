@@ -2,6 +2,7 @@ import { TransferAgentService } from './transfer-agent.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AgentCallerService } from '../common/agent-caller.service';
 import { CompetitionsService } from '../../competitions/competitions.service';
+import { TranslationsService } from '../../translations/translations.service';
 
 function makeDeps() {
   const prisma = {
@@ -22,9 +23,16 @@ function makeDeps() {
 
   const competitions = {
     competitionsForText: jest.fn().mockResolvedValue([]),
+    findBySlug: jest.fn().mockResolvedValue(null),
   } as unknown as CompetitionsService;
 
-  return { prisma, agentCaller, competitions };
+  // Identity pass-through, mirroring the real service's lang === 'en'
+  // short-circuit — these tests don't exercise Hebrew translation.
+  const translations = {
+    translateMany: jest.fn().mockImplementation((texts: string[]) => Promise.resolve(Object.fromEntries(texts.map((t) => [t, t])))),
+  } as unknown as TranslationsService;
+
+  return { prisma, agentCaller, competitions, translations };
 }
 
 describe('TransferAgentService', () => {
@@ -35,7 +43,7 @@ describe('TransferAgentService', () => {
         { id: 10, playerName: 'Erling Haaland', fromClub: 'Man City', toClub: 'Real Madrid', status: 'rumor' },
       ]);
       (deps.prisma.transferStory.findMany as jest.Mock).mockResolvedValue([]);
-      const service = new TransferAgentService(deps.prisma, deps.agentCaller, deps.competitions);
+      const service = new TransferAgentService(deps.prisma, deps.agentCaller, deps.competitions, deps.translations);
 
       await service.groupAndScoreStories();
 
@@ -57,7 +65,7 @@ describe('TransferAgentService', () => {
       (deps.prisma.transferStory.findMany as jest.Mock).mockResolvedValue([
         { id: 5, playerName: 'Erling Haaland', toClub: 'Real Madrid', reports: [] },
       ]);
-      const service = new TransferAgentService(deps.prisma, deps.agentCaller, deps.competitions);
+      const service = new TransferAgentService(deps.prisma, deps.agentCaller, deps.competitions, deps.translations);
 
       await service.groupAndScoreStories();
 
@@ -81,7 +89,7 @@ describe('TransferAgentService', () => {
           ],
         },
       ]);
-      const service = new TransferAgentService(deps.prisma, deps.agentCaller, deps.competitions);
+      const service = new TransferAgentService(deps.prisma, deps.agentCaller, deps.competitions, deps.translations);
 
       await service.groupAndScoreStories();
 
@@ -96,7 +104,7 @@ describe('TransferAgentService', () => {
       (deps.prisma.transferStory.findMany as jest.Mock).mockResolvedValue([
         { id: 8, playerName: 'Nobody', fromClub: null, toClub: 'Nowhere FC', reports: [] },
       ]);
-      const service = new TransferAgentService(deps.prisma, deps.agentCaller, deps.competitions);
+      const service = new TransferAgentService(deps.prisma, deps.agentCaller, deps.competitions, deps.translations);
 
       await service.groupAndScoreStories();
 
@@ -135,7 +143,7 @@ describe('TransferAgentService', () => {
           ]),
         },
       } as unknown as PrismaService;
-      const service = new TransferAgentService(prisma, deps.agentCaller, deps.competitions);
+      const service = new TransferAgentService(prisma, deps.agentCaller, deps.competitions, deps.translations);
 
       const result = await service.listStories();
 

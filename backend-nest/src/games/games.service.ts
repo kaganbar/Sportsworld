@@ -40,20 +40,25 @@ export class GamesService {
     private readonly competitions: CompetitionsService,
   ) {}
 
-  teamDto(team: { id: number; name: string; shortName: string; country: string; primaryColor: string }, map: TMap) {
+  teamDto(
+    team: { id: number; name: string; shortName: string; country: string; primaryColor: string; logoUrl: string | null; isReal: boolean },
+    map: TMap,
+  ) {
     return {
       id: team.id,
       name: tr(map, team.name),
       short_name: team.shortName,
       country: team.country,
       primary_color: team.primaryColor,
+      logo_url: team.logoUrl,
+      is_real: team.isReal,
     };
   }
 
   gameListDto(
     game: {
       id: number; competition: string; kickoff: Date; venue: string; status: string;
-      homeTeam: any; awayTeam: any; homeScore: number | null; awayScore: number | null; minute: number | null;
+      homeTeam: any; awayTeam: any; homeScore: number | null; awayScore: number | null; minute: number | null; isReal: boolean;
     },
     map: TMap,
   ) {
@@ -68,6 +73,7 @@ export class GamesService {
       home_score: game.homeScore,
       away_score: game.awayScore,
       minute: game.minute,
+      is_real: game.isReal,
     };
   }
 
@@ -141,6 +147,21 @@ export class GamesService {
     };
   }
 
+  private eventDto(
+    e: { minute: number; stoppageMinute: number | null; type: string; teamId: number; player: any; relatedPlayer: any; detail: string | null },
+    map: TMap,
+  ) {
+    return {
+      minute: e.minute,
+      stoppage_minute: e.stoppageMinute,
+      type: e.type,
+      team_id: e.teamId,
+      player: e.player ? tr(map, e.player.name) : null,
+      related_player: e.relatedPlayer ? tr(map, e.relatedPlayer.name) : null,
+      detail: e.detail,
+    };
+  }
+
   async findGameOrThrow(id: number) {
     const game = await this.prisma.game.findUnique({ where: { id }, include: { homeTeam: true, awayTeam: true } });
     if (!game) throw new NotFoundException(`Game ${id} not found`);
@@ -158,7 +179,7 @@ export class GamesService {
     const homeLineup = lineups.filter((l) => l.teamId === game.homeTeamId);
     const awayLineup = lineups.filter((l) => l.teamId === game.awayTeamId);
 
-    const [homeStats, awayStats, homeRecent, awayRecent, h2h, homeInjuries, awayInjuries] = await Promise.all([
+    const [homeStats, awayStats, homeRecent, awayRecent, h2h, homeInjuries, awayInjuries, events] = await Promise.all([
       this.stats.teamFormStats(game.homeTeamId),
       this.stats.teamFormStats(game.awayTeamId),
       this.stats.teamRecentResults(game.homeTeamId),
@@ -166,6 +187,11 @@ export class GamesService {
       this.stats.teamHeadToHead(game.homeTeamId, game.awayTeamId),
       this.prisma.injury.findMany({ where: { teamId: game.homeTeamId }, include: { player: true } }),
       this.prisma.injury.findMany({ where: { teamId: game.awayTeamId }, include: { player: true } }),
+      this.prisma.matchEvent.findMany({
+        where: { gameId: id },
+        include: { player: true, relatedPlayer: true },
+        orderBy: [{ minute: 'asc' }, { stoppageMinute: 'asc' }],
+      }),
     ]);
 
     const statsDto = (s: { played: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number }) => ({
@@ -189,6 +215,10 @@ export class GamesService {
     for (const l of lineups) texts.add(l.player.name);
     for (const r of [...homeRecent, ...awayRecent, ...h2h]) texts.add(r.competition);
     for (const i of [...homeInjuries, ...awayInjuries]) texts.add(i.player.name);
+    for (const e of events) {
+      if (e.player) texts.add(e.player.name);
+      if (e.relatedPlayer) texts.add(e.relatedPlayer.name);
+    }
     const map = await this.translations.translateMany([...texts], lang);
 
     return {
@@ -213,6 +243,7 @@ export class GamesService {
         home: homeInjuries.map((i) => this.injuryDto(i, map)),
         away: awayInjuries.map((i) => this.injuryDto(i, map)),
       },
+      events: events.map((e) => this.eventDto(e, map)),
     };
   }
 }

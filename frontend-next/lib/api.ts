@@ -12,6 +12,15 @@ export interface Team {
   short_name: string;
   country: string;
   primary_color: string;
+  // Colored monogram badge as a data:image/svg+xml;base64,... URI — always
+  // populated once the companion backend change lands (a colored circle
+  // fallback keyed on primary_color covers every team in the meantime, see
+  // components/team-badge.tsx).
+  logo_url?: string | null;
+  // True for teams ingested by the live scraper (365scores/football-data.org/
+  // balldontlie); false for this app's own seeded/simulated content. See
+  // components/simulated-badge.tsx.
+  is_real?: boolean;
 }
 
 export interface Game {
@@ -25,6 +34,7 @@ export interface Game {
   home_score: number | null;
   away_score: number | null;
   minute: number | null;
+  is_real?: boolean;
 }
 
 export interface LineupEntry {
@@ -98,6 +108,20 @@ export interface InjuryEntry {
   reason: string;
 }
 
+// Football-only match event feed (goals/cards/subs/VAR) — basketball,
+// baseball, volleyball, and tennis never populate this, so it lives only on
+// the football-specific `GameDetail`, not the generic per-sport detail
+// shapes below (BasketballGameDetail etc.).
+export interface MatchEvent {
+  minute: number;
+  stoppage_minute: number | null;
+  type: "goal" | "penalty_goal" | "own_goal" | "yellow_card" | "red_card" | "substitution" | "var_review";
+  team_id: number;
+  player: string | null;
+  related_player: string | null;
+  detail: string | null;
+}
+
 export interface GameDetail {
   game: Game;
   lineups: { home: LineupEntry[]; away: LineupEntry[] };
@@ -106,6 +130,7 @@ export interface GameDetail {
   recent_form: { home: PastResult[]; away: PastResult[] };
   head_to_head: PastResult[];
   injuries: { home: InjuryEntry[]; away: InjuryEntry[] };
+  events: MatchEvent[];
 }
 
 export interface Analysis {
@@ -370,6 +395,60 @@ export interface TransferRumour {
 export const fetchTransfers = (limit = 30, sport?: SportKey, competition?: string) =>
   get<TransferRumour[]>(`/api/transfers?limit=${limit}${sport ? `&sport=${sport}` : ""}${competitionQuery(competition)}`);
 
+// --- News Agent / Transfer Agent (real Hebrew via a Claude call when
+// lang=he, English fallback otherwise — headline/summary/ai_summary come
+// back already lang-appropriate, the frontend never picks between an _he
+// and non-_he field itself) ---
+
+export interface NewsClusterArticle {
+  title: string;
+  url: string;
+  source: string;
+  published_at: string;
+}
+
+export interface NewsCluster {
+  id: number;
+  headline: string;
+  summary: string | null;
+  sport: string | null;
+  articles: NewsClusterArticle[];
+  updated_at: string;
+}
+
+export const fetchNewsClusters = (lang: Lang = "en", limit = 30, sport?: SportKey, competition?: string) =>
+  get<NewsCluster[]>(
+    `/api/agents/news-agent/clusters?limit=${limit}&lang=${lang}${sport ? `&sport=${sport}` : ""}${competitionQuery(competition)}`,
+  );
+
+export type TransferStatus = "rumor" | "official" | "completed" | "denied";
+
+export interface TransferStoryReport {
+  source: string;
+  source_credibility: number;
+  description: string;
+  source_url: string;
+  source_probability: number | null;
+  reported_at: string;
+}
+
+export interface TransferStory {
+  id: number;
+  player_name: string;
+  from_club: string | null;
+  to_club: string;
+  status: TransferStatus;
+  estimated_probability: number | null;
+  ai_summary: string | null;
+  reports: TransferStoryReport[];
+  updated_at: string;
+}
+
+export const fetchTransferStories = (lang: Lang = "en", limit = 30, sport?: SportKey, competition?: string) =>
+  get<TransferStory[]>(
+    `/api/agents/transfer-agent/stories?limit=${limit}&lang=${lang}${sport ? `&sport=${sport}` : ""}${competitionQuery(competition)}`,
+  );
+
 // --- Competitions / Standings / Rankings ---
 
 export interface Competition {
@@ -393,6 +472,9 @@ export interface StandingsRow {
   goals_against: number;
   goal_diff: number;
   points: number;
+  // Same colored-monogram data URI as Team.logo_url — see components/team-badge.tsx.
+  logo_url?: string | null;
+  team_is_real?: boolean;
 }
 
 export const fetchStandings = (
@@ -439,11 +521,37 @@ export interface PlayerProfile {
   name: string;
   position: string;
   sport: "football" | "basketball" | "baseball" | "volleyball";
+  // True for players sourced from a real data provider (TheSportsDB /
+  // football-data.org / balldontlie) — see prisma's enrich-*.ts scripts.
+  // These never carry fabricated season_stats (always null) or injuries.
+  is_real: boolean;
   team: { id: number; name: string; short_name: string };
   season_stats: FootballSeasonStats | BasketballSeasonStats | BaseballSeasonStats | VolleyballSeasonStats | null;
 }
 
 export const fetchPlayer = (id: string, lang: Lang = "en") => get<PlayerProfile>(`/api/players/${id}?lang=${lang}`);
+
+export interface TeamRosterPlayer {
+  id: number;
+  name: string;
+  position: string;
+  shirt_number: number | null;
+  is_real: boolean;
+}
+export interface TeamRoster {
+  team: {
+    id: number;
+    name: string;
+    short_name: string;
+    sport: string;
+    logo_url: string | null;
+    coach_name: string | null;
+    is_real: boolean;
+  };
+  players: TeamRosterPlayer[];
+}
+export const fetchTeamRoster = (teamId: number | string, lang: Lang = "en") =>
+  get<TeamRoster>(`/api/players/team/${teamId}?lang=${lang}`);
 
 export interface TennisPlayerProfile {
   id: number;

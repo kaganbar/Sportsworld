@@ -30,10 +30,11 @@ const FOOTBALL: Seed[] = [
   { slug: 'bundesliga', name: 'Bundesliga', nameHe: 'הבונדסליגה', tier: 8, aliases: ['Bundesliga'] },
   { slug: 'ligue-1', name: 'Ligue 1', nameHe: 'ליגה 1 הצרפתית', tier: 9, aliases: ['Ligue 1'] },
   { slug: 'mls', name: 'MLS', nameHe: 'MLS', tier: 10, aliases: ['MLS', 'Major League Soccer'] },
-  { slug: 'saudi-pro-league', name: 'Saudi Pro League', nameHe: 'הליגה הסעודית', tier: 11, aliases: ['Saudi Pro League', 'Saudi Professional League', 'Roshn Saudi League'] },
-  { slug: 'copa-libertadores', name: 'Copa Libertadores', nameHe: 'קופה ליברטדורס', tier: 12, aliases: ['Copa Libertadores', 'CONMEBOL Libertadores'] },
-  { slug: 'national-cups', name: 'National Cups', nameHe: 'גביעים מקומיים', tier: 13, aliases: ['FA Cup', 'Copa del Rey', 'DFB-Pokal', 'Coppa Italia', 'Coupe de France'] },
-  { slug: 'international-friendlies', name: 'International Friendlies', nameHe: 'משחקי ידידות', tier: 14, aliases: ['International Friendlies', 'Club Friendlies', 'Friendlies'] },
+  { slug: 'ligat-haal', name: "Ligat Ha'Al", nameHe: 'ליגת העל', tier: 11, aliases: ["Ligat Ha'al", 'Israeli Premier League', 'Ligat HaAl', 'Israel Premier League', "Ligat ha'Al"] },
+  { slug: 'saudi-pro-league', name: 'Saudi Pro League', nameHe: 'הליגה הסעודית', tier: 12, aliases: ['Saudi Pro League', 'Saudi Professional League', 'Roshn Saudi League'] },
+  { slug: 'copa-libertadores', name: 'Copa Libertadores', nameHe: 'קופה ליברטדורס', tier: 13, aliases: ['Copa Libertadores', 'CONMEBOL Libertadores'] },
+  { slug: 'national-cups', name: 'National Cups', nameHe: 'גביעים מקומיים', tier: 14, aliases: ['FA Cup', 'Copa del Rey', 'DFB-Pokal', 'Coppa Italia', 'Coupe de France'] },
+  { slug: 'international-friendlies', name: 'International Friendlies', nameHe: 'משחקי ידידות', tier: 15, aliases: ['International Friendlies', 'Club Friendlies', 'Friendlies'] },
 ];
 
 const BASKETBALL: Seed[] = [

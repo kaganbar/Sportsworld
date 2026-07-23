@@ -45,6 +45,11 @@ const translations = {
     winsAbbr: "W",
     drawsAbbr: "D",
     lossesAbbr: "L",
+    tableTeam: "Team",
+    tableGD: "GD",
+    tablePts: "Pts",
+    tablePlayer: "Player",
+    tableCountry: "Country",
     scored: "scored",
     conceded: "conceded",
     lastGames: "last",
@@ -62,6 +67,10 @@ const translations = {
     injury_out: "out",
     injury_doubtful: "doubtful",
     injury_suspended: "suspended",
+    position_gk: "Goalkeeper",
+    position_df: "Defender",
+    position_mf: "Midfielder",
+    position_fw: "Forward",
     home: "Home",
     nav_transfers: "Transfer Center",
     nav_news: "News Center",
@@ -164,6 +173,24 @@ const translations = {
     tourWta: "WTA Tour",
     positionSingles: "Singles",
     matches: "matches",
+    tab_matchEvents: "Match Events",
+    event_goal: "Goal",
+    event_penalty_goal: "Penalty",
+    event_own_goal: "Own Goal",
+    event_yellow_card: "Yellow Card",
+    event_red_card: "Red Card",
+    event_substitution: "Substitution",
+    event_var_review: "VAR Review",
+    noMatchEvents: "No match events yet.",
+    transferStatus_rumor: "Rumor",
+    transferStatus_official: "Official",
+    transferStatus_completed: "Completed",
+    transferStatus_denied: "Denied",
+    squad: "Squad",
+    coach: "Coach",
+    verifiedPlayer: "Verified",
+    noRosterData: "No squad data yet for this team.",
+    simulatedBadge: "Demo Season",
   },
   he: {
     tagline: "בוחרים ענף ספורט, מקבלים את משחקי היום וניתוח AI לכל משחק.",
@@ -199,6 +226,11 @@ const translations = {
     winsAbbr: "נ",
     drawsAbbr: "ת",
     lossesAbbr: "ה",
+    tableTeam: "קבוצה",
+    tableGD: "הפרש",
+    tablePts: "נק'",
+    tablePlayer: "שחקן",
+    tableCountry: "מדינה",
     scored: "לזכות",
     conceded: "לחובה",
     lastGames: "ב־",
@@ -216,6 +248,10 @@ const translations = {
     injury_out: "לא ישחק",
     injury_doubtful: "מוטל בספק",
     injury_suspended: "מורחק",
+    position_gk: "שוער",
+    position_df: "מגן",
+    position_mf: "קשר",
+    position_fw: "חלוץ",
     home: "בית",
     nav_transfers: "מרכז מעברים",
     nav_news: "מרכז חדשות",
@@ -317,10 +353,48 @@ const translations = {
     tourWta: "טור WTA",
     positionSingles: "יחידים",
     matches: "משחקים",
+    tab_matchEvents: "אירועי משחק",
+    event_goal: "שער",
+    event_penalty_goal: "פנדל",
+    event_own_goal: "שער עצמי",
+    event_yellow_card: "כרטיס צהוב",
+    event_red_card: "כרטיס אדום",
+    event_substitution: "חילוף",
+    event_var_review: "בדיקת VAR",
+    noMatchEvents: "אין עדיין אירועי משחק.",
+    transferStatus_rumor: "שמועה",
+    transferStatus_official: "העברה רשמית",
+    transferStatus_completed: "הושלמה",
+    transferStatus_denied: "נדחתה",
+    squad: "סגל",
+    coach: "מאמן",
+    verifiedPlayer: "מאומת",
+    noRosterData: "אין עדיין נתוני סגל לקבוצה זו.",
+    simulatedBadge: "עונת דמו",
   },
 } as const;
 
 export type TKey = keyof (typeof translations)["en"];
+
+// Football's Player.position values (see prisma/schema.prisma) are the
+// short GK/DF/MF/FW codes this app normalizes every source onto (both the
+// fictional seed data and the real football-data.org squad enrichment,
+// see prisma/enrich-football-data-squads.ts) — translated via the
+// position_gk/df/mf/fw keys above. Named `...Football...` (not the more
+// generic `translatePosition`) since basketball's own PG/SG/SF/PF/C-style
+// codes are a separate, differently-shaped lookup (see lib/positions.ts)
+// — deliberately not unified with this one to avoid two concurrently
+// written position-translation helpers colliding on one name/module. Any
+// other sport's position code — or an unrecognized value — passes through
+// unchanged, same "untranslated original" fallback as
+// translations/fields.py's TranslatedCharField on the backend.
+const TRANSLATABLE_FOOTBALL_POSITION_CODES = new Set(["gk", "df", "mf", "fw"]);
+
+export function translateFootballPosition(t: (key: TKey) => string, position: string): string {
+  const code = position.toLowerCase();
+  if (!TRANSLATABLE_FOOTBALL_POSITION_CODES.has(code)) return position;
+  return t(`position_${code}` as TKey);
+}
 
 interface LangContextValue {
   lang: Lang;
@@ -355,6 +429,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem("lang", lang);
+    // Mirrored into a cookie (readable by the server layout, unlike
+    // localStorage) so the *next* request's SSR <html lang/dir> already
+    // matches this tab's language — same "persist past the fix" pattern as
+    // the localStorage write above, just for the server-rendered attributes.
+    document.cookie = `lang=${lang}; path=/; max-age=31536000; samesite=lax`;
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === "he" ? "rtl" : "ltr";
   }, [lang]);

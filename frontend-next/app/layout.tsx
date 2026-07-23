@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Rubik } from "next/font/google";
 import dynamic from "next/dynamic";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 import { AppSidebar, MobileTopBar } from "@/components/app-sidebar";
@@ -29,13 +30,20 @@ export const metadata: Metadata = {
   description: "AI-powered sports platform",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read on the server so the very first paint already has the right
+  // lang/dir — LanguageProvider defaults to "he" client-side too, and
+  // mirrors this same cookie on every change (see lib/i18n.tsx), so the
+  // two never disagree after the first language switch.
+  const cookieLang = (await cookies()).get("lang")?.value;
+  const lang = cookieLang === "en" ? "en" : "he";
+
   return (
-    <html lang="en" className={rubik.variable}>
+    <html lang={lang} dir={lang === "he" ? "rtl" : "ltr"} className={rubik.variable}>
       <body className="bg-neutral-950 text-white">
         <Providers>
           <ScrollProgress />

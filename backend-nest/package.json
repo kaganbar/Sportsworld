@@ -9,6 +9,10 @@
     "seed": "ts-node prisma/seed.ts",
     "seed:competitions": "ts-node prisma/seed-competitions.ts",
     "backfill:competitions": "ts-node prisma/backfill-competitions.ts",
+    "backfill:hebrew-content": "ts-node prisma/backfill-hebrew-content.ts",
+    "enrich:real-players": "ts-node prisma/enrich-real-players.ts",
+    "enrich:football-data-squads": "ts-node prisma/enrich-football-data-squads.ts",
+    "enrich:balldontlie-rosters": "ts-node prisma/enrich-balldontlie-rosters.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },

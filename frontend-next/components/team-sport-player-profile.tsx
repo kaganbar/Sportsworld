@@ -46,6 +46,8 @@ export default function TeamSportPlayerProfile<S>({
           name={data.name}
           team={data.team.name}
           position={data.position}
+          sport={sport}
+          isReal={data.is_real}
           stats={statRows.map((row) => ({ label: t(row.labelKey), value: row.value(stats) }))}
         />
       )}

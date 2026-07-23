@@ -29,6 +29,34 @@ const randFloat = (min: number, max: number, decimals = 1) => {
   return Number(v.toFixed(decimals));
 };
 
+// Deterministic placeholder "monogram badge" (Slack/GitHub-avatar style) for
+// every seeded Team — no real crest assets exist and hotlinking/hosting
+// official trademarked club logos isn't appropriate for a public demo, so
+// every team gets a generated SVG instead: a filled circle in the team's own
+// primaryColor with bold white initials, inlined as a data: URI so no asset
+// pipeline/hosting is needed. Initials come from `shortName` when it already
+// reads as an abbreviation (true for every team in this file — RMA, MHA,
+// etc.); otherwise falls back to initials of `name`'s significant words.
+function teamBadgeSvg(name: string, shortName: string, color: string): string {
+  const STOP_WORDS = new Set(['fc', 'cf', 'sc', 'the', 'of', 'and']);
+  const isAbbreviation = /^[A-Za-z0-9]{2,5}$/.test(shortName);
+  let initials: string;
+  if (isAbbreviation) {
+    initials = shortName.slice(0, 3).toUpperCase();
+  } else {
+    const words = name.split(/\s+/).filter((w) => w && !STOP_WORDS.has(w.toLowerCase()));
+    initials = words.slice(0, 3).map((w) => w[0].toUpperCase()).join('') || name.slice(0, 2).toUpperCase();
+  }
+  const fontSize = initials.length >= 3 ? 22 : 28;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">` +
+    `<circle cx="32" cy="32" r="32" fill="${color}"/>` +
+    `<text x="32" y="33" text-anchor="middle" dominant-baseline="central" ` +
+    `font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="${fontSize}" fill="#FFFFFF">${initials}</text>` +
+    `</svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
 // Plausible season-stat chips for the player profile screen, varied by
 // position so a keeper/defender doesn't get a striker's goal tally. Purely
 // cosmetic mock data (no real-world source), same spirit as the rest of
@@ -80,6 +108,15 @@ const LAST_NAMES = [
   'Silva', 'Fernandez', 'Muller', 'Diaz', 'Martinez', 'Costa', 'Moreira', 'Vega', 'Kovac', 'Dubois',
   'Schmidt', 'Rossi', 'Almeida', 'Laurent', 'Weber', 'Navarro', 'Klein', 'Marchetti', 'Duarte', 'Fontaine',
 ];
+// Fictional Israeli-flavored name pool for the Ligat Ha'Al squads (mixed
+// with the generic pool above, not replacing it, to represent the
+// foreign-legionnaire share every real Ligat Ha'Al squad carries).
+const ISRAELI_FIRST_NAMES = [
+  'Omri', 'Eitan', 'Yonatan', 'Idan', 'Liel', 'Tal', 'Nadav', 'Ben', 'Roy', 'Omer', 'Dor', 'Shon', 'Matan', 'Gil', 'Almog',
+];
+const ISRAELI_LAST_NAMES = [
+  'Cohen', 'Levi', 'Mizrahi', 'Peretz', 'Biton', 'Azulay', 'Dahan', 'Malka', 'Amar', 'Avraham', 'Hazan', 'Shani', 'Barda', 'Turgeman', 'Suissa',
+];
 const INJURY_REASONS: [string, string][] = [
   ['out', 'Hamstring tear'], ['out', 'Knee ligament injury'],
   ['doubtful', 'Ankle knock'], ['doubtful', 'Muscle fatigue'],
@@ -90,6 +127,60 @@ const FOOTBALL_FIXTURES: [string, string, string, string, number, string][] = [
   ['RMA', 'BAR', 'La Liga', 'Santiago Bernabeu', 21, 'scheduled'],
   ['MCI', 'LIV', 'Premier League', 'Etihad Stadium', 18, 'live'],
   ['BAY', 'PSG', 'Champions League', 'Allianz Arena', 20, 'scheduled'],
+];
+
+// Real Israeli Premier League (Ligat Ha'Al) clubs, real stadiums/colors —
+// the first competition in this seed script with real, dedicated content
+// rather than a handful of generic elite clubs. Squad players remain
+// fictional throughout (same "mock data, no real-world source" spirit as the
+// rest of this file). Coach names are a deliberate split, decided 2026-07-22:
+// real, verified-current head coaches where a confident match was found
+// (Maccabi Haifa, Hapoel Be'er Sheva, Hapoel Tel Aviv, Beitar Jerusalem,
+// Hapoel Haifa — see LIGAT_HAAL_COACHES below), and clearly fictional names
+// elsewhere rather than risk stating an unconfirmed or since-changed real
+// person's job as fact.
+const LIGAT_HAAL_TEAMS: [string, string, string, string][] = [
+  ['Maccabi Haifa', 'MHA', 'Israel', '#0B6E4F'],
+  ['Maccabi Tel Aviv', 'MTA', 'Israel', '#F7D117'],
+  ["Hapoel Be'er Sheva", 'HBS', 'Israel', '#D71920'],
+  ['Beitar Jerusalem', 'BJR', 'Israel', '#111111'],
+  ['Hapoel Tel Aviv', 'HTA', 'Israel', '#C8102E'],
+  ['Maccabi Petah Tikva', 'MPT', 'Israel', '#F58220'],
+  ['Bnei Sakhnin', 'SAK', 'Israel', '#2E8B57'],
+  ['Ashdod', 'ASH', 'Israel', '#0057A0'],
+  ['Hapoel Haifa', 'HHA', 'Israel', '#C8102E'],
+  ['Hapoel Jerusalem', 'HJR', 'Israel', '#C8102E'],
+];
+// Real stadium names — two pairs of clubs sharing a home ground
+// (Sammy Ofer: Maccabi/Hapoel Haifa; Teddy: Beitar/Hapoel Jerusalem) is
+// realistic, not a bug — `Game.venue` is a free string, not FK'd to `Team`.
+const LIGAT_HAAL_VENUES: Record<string, string> = {
+  MHA: 'Sammy Ofer Stadium',
+  MTA: 'Bloomfield Stadium',
+  HBS: 'Turner Stadium',
+  BJR: 'Teddy Stadium',
+  HTA: 'Bloomfield Stadium',
+  MPT: 'HaMoshava Stadium',
+  SAK: 'Doha Stadium',
+  ASH: 'Yud-Alef Stadium',
+  HHA: 'Sammy Ofer Stadium',
+  HJR: 'Teddy Stadium',
+};
+const LIGAT_HAAL_COACHES: Record<string, string> = {
+  MHA: 'Barak Bachar', // real, verified current head coach
+  MTA: 'Guy Levy', // fictional
+  HBS: 'Ran Kozuk', // real, verified current head coach
+  BJR: 'Almog Cohen', // real, verified current head coach
+  HTA: 'Elyaniv Barda', // real, verified current head coach
+  MPT: 'Doron Asayag', // fictional
+  SAK: 'Samer Halil', // fictional
+  ASH: 'Yaniv Peretz', // fictional
+  HHA: 'Haim Silvas', // real, verified current head coach
+  HJR: 'Moti Ivri', // fictional
+};
+const LIGAT_HAAL_FIXTURES: [string, string, string, string, number, string][] = [
+  ['MHA', 'MTA', "Ligat Ha'Al", LIGAT_HAAL_VENUES.MHA, 20, 'live'],
+  ['HBS', 'BJR', "Ligat Ha'Al", LIGAT_HAAL_VENUES.HBS, 19, 'scheduled'],
 ];
 
 const BASKETBALL_TEAMS: [string, string, string, string][] = [
@@ -195,6 +286,34 @@ const TRANSLATIONS_HE: [string, string, string][] = [
   ['Dodger Stadium', "אצטדיון דודג'רס", 'venue'],
   ['Unipol Arena', 'אצטדיון יוניפול', 'venue'],
   ['Ginasio do Ibirapuera', 'גינסיו דו איבירפוארה', 'venue'],
+  ['Maccabi Haifa', 'מכבי חיפה', 'team'],
+  ['Maccabi Tel Aviv', 'מכבי תל אביב', 'team'],
+  ["Hapoel Be'er Sheva", 'הפועל באר שבע', 'team'],
+  ['Beitar Jerusalem', 'בית"ר ירושלים', 'team'],
+  ['Hapoel Tel Aviv', 'הפועל תל אביב', 'team'],
+  ['Maccabi Petah Tikva', 'מכבי פתח תקווה', 'team'],
+  ['Bnei Sakhnin', 'בני סכנין', 'team'],
+  ['Ashdod', 'אשדוד', 'team'],
+  ['Hapoel Haifa', 'הפועל חיפה', 'team'],
+  ['Hapoel Jerusalem', 'הפועל ירושלים', 'team'],
+  ["Ligat Ha'Al", 'ליגת העל', 'competition'],
+  ['Sammy Ofer Stadium', 'אצטדיון סמי עופר', 'venue'],
+  ['Bloomfield Stadium', 'אצטדיון בלומפילד', 'venue'],
+  ['Turner Stadium', 'אצטדיון טרנר', 'venue'],
+  ['Teddy Stadium', 'אצטדיון טדי', 'venue'],
+  ['HaMoshava Stadium', 'אצטדיון המושבה', 'venue'],
+  ['Doha Stadium', 'אצטדיון דוחא', 'venue'],
+  ['Yud-Alef Stadium', 'אצטדיון י"א', 'venue'],
+  ['Barak Bachar', 'ברק בכר', 'coach'],
+  ['Guy Levy', 'גיא לוי', 'coach'],
+  ['Ran Kozuk', "רן קוז'וק", 'coach'],
+  ['Almog Cohen', 'אלמוג כהן', 'coach'],
+  ['Elyaniv Barda', 'אליניב ברדה', 'coach'],
+  ['Doron Asayag', 'דורון עסייג', 'coach'],
+  ['Samer Halil', 'סאמר חליל', 'coach'],
+  ['Yaniv Peretz', 'יניב פרץ', 'coach'],
+  ['Haim Silvas', 'חיים סילבס', 'coach'],
+  ['Moti Ivri', 'מוטי עברי', 'coach'],
 ];
 
 function todayAt(hour: number): Date {
@@ -208,6 +327,7 @@ async function wipe() {
   await prisma.tennisSet.deleteMany();
   await prisma.tennisMatch.deleteMany();
   await prisma.tennisPlayer.deleteMany();
+  await prisma.matchEvent.deleteMany();
   await prisma.lineup.deleteMany();
   await prisma.quarterScore.deleteMany();
   await prisma.inningScore.deleteMany();
@@ -229,13 +349,16 @@ function seasonStatsFor(sport: TeamSport, position: string) {
   return volleyballSeasonStats(position);
 }
 
-async function createSquad(teamId: number, template: string[], sport: TeamSport) {
+async function createSquad(teamId: number, template: string[], sport: TeamSport, israeliMix = false) {
   const used = new Set<string>();
   const players = [];
   for (let i = 0; i < template.length; i++) {
     let name: string;
     do {
-      name = `${choice(FIRST_NAMES)} ${choice(LAST_NAMES)}`;
+      name =
+        israeliMix && rng() < 0.7
+          ? `${choice(ISRAELI_FIRST_NAMES)} ${choice(ISRAELI_LAST_NAMES)}`
+          : `${choice(FIRST_NAMES)} ${choice(LAST_NAMES)}`;
     } while (used.has(name));
     used.add(name);
     const seasonStats = seasonStatsFor(sport, template[i]);
@@ -272,16 +395,27 @@ async function seedTeamSport(
   squadTemplate: string[],
   fixtures: [string, string, string, string, number, string][],
   scoreRange: [number, number],
+  opts?: { israeliNameMix?: boolean; coachNames?: Record<string, string>; competitionId?: number },
 ) {
   const teams: Record<string, { id: number; shortName: string }> = {};
   for (const [name, short, country, color] of teamDefs) {
-    const team = await prisma.team.create({ data: { sport, name, shortName: short, country, primaryColor: color } });
+    const team = await prisma.team.create({
+      data: {
+        sport,
+        name,
+        shortName: short,
+        country,
+        primaryColor: color,
+        coachName: opts?.coachNames?.[short],
+        logoUrl: teamBadgeSvg(name, short, color),
+      },
+    });
     teams[short] = team;
   }
 
   const players: Record<string, any[]> = {};
   for (const [, short] of teamDefs) {
-    players[short] = await createSquad(teams[short].id, squadTemplate, sport);
+    players[short] = await createSquad(teams[short].id, squadTemplate, sport, opts?.israeliNameMix);
   }
 
   const shorts = Object.keys(teams);
@@ -360,6 +494,7 @@ async function seedTeamSport(
       data: {
         sport,
         competition,
+        competitionId: opts?.competitionId,
         kickoff: todayAt(hour),
         venue,
         status: status as any,
@@ -487,6 +622,112 @@ async function seedTeamSport(
   return { teams, players };
 }
 
+// Generates goal/card MatchEvent rows for one finished game, consistent with
+// its final score (goal-type events exactly match homeScore/awayScore) —
+// so the timeline, standings, and top-scorers are all populated from one
+// generation pass rather than drifting out of sync with each other.
+async function createMatchEvents(
+  gameId: number,
+  homeTeamId: number,
+  awayTeamId: number,
+  homePlayers: any[],
+  awayPlayers: any[],
+  homeScore: number,
+  awayScore: number,
+) {
+  const outfield = (list: any[]) => list.filter((p) => p.position !== 'GK');
+
+  const addGoals = async (teamId: number, pool: any[], count: number) => {
+    for (let i = 0; i < count; i++) {
+      const scorer = choice(pool);
+      const isPenalty = rng() < 0.12;
+      const hasAssist = !isPenalty && rng() < 0.35;
+      const assistCandidates = pool.filter((p) => p.id !== scorer.id);
+      const relatedPlayerId = hasAssist && assistCandidates.length ? choice(assistCandidates).id : undefined;
+      await prisma.matchEvent.create({
+        data: {
+          gameId,
+          minute: randint(1, 90),
+          type: isPenalty ? 'penalty_goal' : 'goal',
+          teamId,
+          playerId: scorer.id,
+          relatedPlayerId,
+        },
+      });
+    }
+  };
+
+  await addGoals(homeTeamId, outfield(homePlayers), homeScore);
+  await addGoals(awayTeamId, outfield(awayPlayers), awayScore);
+
+  const withTeam = [
+    ...homePlayers.map((p) => ({ p, teamId: homeTeamId })),
+    ...awayPlayers.map((p) => ({ p, teamId: awayTeamId })),
+  ];
+  const cardCount = randint(2, 5);
+  for (let i = 0; i < cardCount; i++) {
+    const { p, teamId } = choice(withTeam);
+    await prisma.matchEvent.create({
+      data: {
+        gameId,
+        minute: randint(1, 90),
+        type: rng() < 0.1 ? 'red_card' : 'yellow_card',
+        teamId,
+        playerId: p.id,
+      },
+    });
+  }
+}
+
+// A single round-robin season (each of the 10 clubs plays every other once
+// = 45 finished games) dated across the past ~9 weeks, so standings/top-
+// scorers/match-timelines all have real, internally-consistent content —
+// unlike every other seeded competition, which has zero finished games
+// (standings.service.ts only counts `status: finished` rows).
+async function seedLigatHaalSeason(
+  teams: Record<string, { id: number; shortName: string }>,
+  players: Record<string, any[]>,
+  competitionId: number,
+) {
+  const shorts = Object.keys(teams);
+  const matchups: [string, string][] = [];
+  for (let i = 0; i < shorts.length; i++) {
+    for (let j = i + 1; j < shorts.length; j++) {
+      matchups.push((i + j) % 2 === 0 ? [shorts[i], shorts[j]] : [shorts[j], shorts[i]]);
+    }
+  }
+
+  const today = new Date();
+  for (let idx = 0; idx < matchups.length; idx++) {
+    const [home, away] = matchups[idx];
+    // ~5 games per "round", most recent round closest to today.
+    const daysAgo = 63 - Math.floor(idx / 5) * 7 - (idx % 5);
+    const kickoff = new Date(today);
+    kickoff.setDate(kickoff.getDate() - daysAgo);
+    kickoff.setHours(19, 0, 0, 0);
+
+    const homeScore = randint(0, 4);
+    const awayScore = randint(0, 4);
+
+    const game = await prisma.game.create({
+      data: {
+        sport: 'football',
+        competition: "Ligat Ha'Al",
+        competitionId,
+        kickoff,
+        venue: LIGAT_HAAL_VENUES[home],
+        status: 'finished',
+        homeTeamId: teams[home].id,
+        awayTeamId: teams[away].id,
+        homeScore,
+        awayScore,
+      },
+    });
+
+    await createMatchEvents(game.id, teams[home].id, teams[away].id, players[home], players[away], homeScore, awayScore);
+  }
+}
+
 async function seedTennis() {
   const players: Record<string, { id: number; tour: 'atp' | 'wta' }> = {};
   for (const [name, country, tour, ranking] of TENNIS_PLAYERS) {
@@ -581,19 +822,42 @@ async function seedTranslations() {
 async function main() {
   await wipe();
   await seedTeamSport('football', FOOTBALL_TEAMS, FOOTBALL_SQUAD_TEMPLATE, FOOTBALL_FIXTURES, [0, 4]);
+
+  const ligatHaal = await prisma.competition.findUnique({
+    where: { sportKey_slug: { sportKey: 'football', slug: 'ligat-haal' } },
+  });
+  if (!ligatHaal) {
+    console.warn(
+      "Ligat Ha'Al Competition row not found — run `npm run seed:competitions` before `npm run seed`. Skipping Ligat Ha'Al seed data.",
+    );
+  } else {
+    const { teams: ligatTeams, players: ligatPlayers } = await seedTeamSport(
+      'football',
+      LIGAT_HAAL_TEAMS,
+      FOOTBALL_SQUAD_TEMPLATE,
+      LIGAT_HAAL_FIXTURES,
+      [0, 4],
+      { israeliNameMix: true, coachNames: LIGAT_HAAL_COACHES, competitionId: ligatHaal.id },
+    );
+    await seedLigatHaalSeason(ligatTeams, ligatPlayers, ligatHaal.id);
+  }
+
   await seedTeamSport('basketball', BASKETBALL_TEAMS, BASKETBALL_SQUAD_TEMPLATE, BASKETBALL_FIXTURES, [95, 125]);
   await seedTeamSport('baseball', BASEBALL_TEAMS, BASEBALL_SQUAD_TEMPLATE, BASEBALL_FIXTURES, [1, 9]);
   await seedTeamSport('volleyball', VOLLEYBALL_TEAMS, VOLLEYBALL_SQUAD_TEMPLATE, VOLLEYBALL_FIXTURES, [60, 100]);
   await seedTennis();
   await seedTranslations();
 
-  const [teams, players, games, translations] = await Promise.all([
+  const [teams, players, games, translations, matchEvents] = await Promise.all([
     prisma.team.count(),
     prisma.player.count(),
     prisma.game.count(),
     prisma.nameTranslation.count(),
+    prisma.matchEvent.count(),
   ]);
-  console.log(`Seeded ${teams} teams, ${players} players, ${games} games, ${translations} Hebrew translations.`);
+  console.log(
+    `Seeded ${teams} teams, ${players} players, ${games} games, ${matchEvents} match events, ${translations} Hebrew translations.`,
+  );
 }
 
 main()

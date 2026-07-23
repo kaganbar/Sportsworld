@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AgentCallerService } from '../common/agent-caller.service';
-import { CompetitionsService } from '../../competitions/competitions.service';
+import { CompetitionsService, SportKey } from '../../competitions/competitions.service';
+import { TranslationsService } from '../../translations/translations.service';
+import { Lang } from '../../common/lang.decorator';
 import { TransferStoryAssessmentSchema, TransferStoryAssessment } from './transfer-agent.schema';
 
 const SYSTEM_PROMPT = `You are the SportsWorld Transfer Agent. You receive a JSON list of
@@ -12,7 +14,14 @@ it was reported.
 
 Write a short synthesis of the story across all reports, and give your OWN probability
 estimate (0-100) that the transfer actually happens — weigh source credibility and how many
-independent sources are reporting it, not just an average of their individual numbers.`;
+independent sources are reporting it, not just an average of their individual numbers.
+
+You must produce BOTH an English summary AND a Hebrew summary (summaryHe). The Hebrew
+version must be written natively by a professional Hebrew sports journalist covering the
+transfer market — natural idiomatic phrasing and word order, the same quality bar as a
+real Hebrew sports outlet — NOT a literal or machine translation of the English text.
+Write each language version independently so it reads as an original, not a translated
+copy.`;
 
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -24,6 +33,7 @@ export class TransferAgentService {
     private readonly prisma: PrismaService,
     private readonly agentCaller: AgentCallerService,
     private readonly competitions: CompetitionsService,
+    private readonly translations: TranslationsService,
   ) {}
 
   /** Best-effort competition tagging (see CompetitionsService.competitionsForText)
@@ -43,6 +53,7 @@ export class TransferAgentService {
     return {
       probability: 40,
       summary: `[Mock] Simulated synthesis across ${reportCount} report(s). No real Claude API call was made.`,
+      summaryHe: `[מוק] סינתזה מדומה על פני ${reportCount} דיווחים. לא בוצעה קריאה אמיתית ל-API של קלוד.`,
     };
   }
 
@@ -86,8 +97,11 @@ export class TransferAgentService {
   }
 
   private async scoreUnscoredStories() {
+    // Also catches stories scored before aiSummaryHe existed (a one-time
+    // catch-up backfill, 2026-07-22) — same self-healing OR as
+    // NewsAgentService.summarizeUnsummarizedClusters, see that comment.
     const unscored = await this.prisma.transferStory.findMany({
-      where: { estimatedProbability: null },
+      where: { OR: [{ estimatedProbability: null }, { aiSummaryHe: null }] },
       include: { reports: { include: { source: true } } },
     });
 
@@ -120,26 +134,58 @@ export class TransferAgentService {
         data: {
           estimatedProbability: Math.max(0, Math.min(100, Math.round(assessment.probability))),
           aiSummary: assessment.summary,
+          aiSummaryHe: assessment.summaryHe,
         },
       });
     }
   }
 
-  async listStories(limit = 30) {
+  /** competitionSlug requires sportKey too (slugs are only unique per
+   * sport), same requirement as NewsService.recentArticles /
+   * NewsAgentService.listClusters. lang picks aiSummaryHe (AI-generated
+   * Hebrew, see groupAndScoreStories) when present, falling back to
+   * aiSummary — same graceful-degradation philosophy as
+   * TranslationsService.translate. player_name/from_club/to_club (story-
+   * level and per-report) are additionally run through the static
+   * NameTranslation dictionary via translateMany — best-effort, most
+   * scraped names won't have an entry and fall back to English unchanged,
+   * which is expected. */
+  async listStories(limit = 30, lang: Lang = 'en', sportKey?: SportKey, competitionSlug?: string) {
+    let competitionId: number | undefined;
+    if (sportKey && competitionSlug) {
+      const row = await this.competitions.findBySlug(sportKey, competitionSlug);
+      if (!row) return [];
+      competitionId = row.id;
+    }
+
     const stories = await this.prisma.transferStory.findMany({
+      where: competitionId ? { competitions: { some: { id: competitionId } } } : {},
       orderBy: { updatedAt: 'desc' },
       take: limit,
       include: { reports: { include: { source: true }, orderBy: { reportedAt: 'desc' } } },
     });
 
+    const names = new Set<string>();
+    for (const s of stories) {
+      names.add(s.playerName);
+      if (s.fromClub) names.add(s.fromClub);
+      names.add(s.toClub);
+      for (const r of s.reports) {
+        names.add(r.playerName);
+        if (r.fromClub) names.add(r.fromClub);
+        names.add(r.toClub);
+      }
+    }
+    const translated = await this.translations.translateMany([...names], lang);
+
     return stories.map((s) => ({
       id: s.id,
-      player_name: s.playerName,
-      from_club: s.fromClub,
-      to_club: s.toClub,
+      player_name: translated[s.playerName] ?? s.playerName,
+      from_club: s.fromClub ? translated[s.fromClub] ?? s.fromClub : s.fromClub,
+      to_club: translated[s.toClub] ?? s.toClub,
       status: s.status,
       estimated_probability: s.estimatedProbability,
-      ai_summary: s.aiSummary,
+      ai_summary: lang === 'he' && s.aiSummaryHe ? s.aiSummaryHe : s.aiSummary,
       reports: s.reports.map((r) => ({
         source: r.source.name,
         source_credibility: r.source.credibilityScore,
