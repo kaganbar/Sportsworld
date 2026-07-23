@@ -19,6 +19,7 @@ import PageShell from "@/components/page-shell";
 import FeaturedMatchHero from "@/components/featured-match-hero";
 import LiveTrackerWidget from "@/components/live-tracker-widget";
 import NewsTicker from "@/components/news-ticker";
+import GlobalCoverageGlobe from "@/components/global-coverage-globe";
 
 // Home hero card mark — gradient circle + glow per sport, distinct from
 // sportsTheme's ambient `glow`/`glowRgb` (wayfinding tint) since this is a
@@ -119,6 +120,8 @@ export default function Home() {
           );
         })}
       </div>
+
+      <GlobalCoverageGlobe />
     </PageShell>
   );
 }

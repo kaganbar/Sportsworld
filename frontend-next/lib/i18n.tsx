@@ -191,6 +191,9 @@ const translations = {
     verifiedPlayer: "Verified",
     noRosterData: "No squad data yet for this team.",
     simulatedBadge: "Demo Season",
+    globalCoverageTitle: "Live sports, worldwide",
+    globalCoverageSubtitle:
+      "Real fixtures, standings, and rosters pulled from live sources across England, Spain, Germany, Italy, France, Israel, the US, and Brazil.",
   },
   he: {
     tagline: "בוחרים ענף ספורט, מקבלים את משחקי היום וניתוח AI לכל משחק.",
@@ -371,6 +374,8 @@ const translations = {
     verifiedPlayer: "מאומת",
     noRosterData: "אין עדיין נתוני סגל לקבוצה זו.",
     simulatedBadge: "עונת דמו",
+    globalCoverageTitle: "ספורט חי, מכל העולם",
+    globalCoverageSubtitle: "משחקים, טבלאות וסגלים אמיתיים ממקורות חיים באנגליה, ספרד, גרמניה, איטליה, צרפת, ישראל, ארה\"ב וברזיל.",
   },
 } as const;
 

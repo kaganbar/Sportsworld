@@ -1,0 +1,63 @@
+/* From Uiverse.io by uiverse-astronaut — recolored for this app's dark
+   theme (see globals.css's --brand-accent and the existing text-white/N
+   convention used everywhere else instead of light-mode grays). Not
+   imported/wired anywhere yet — reference only. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@500&display=swap");
+
+.cir-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.2),
+    0 20px 40px -24px rgba(0, 0, 0, 0.5);
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.cir-tabs__r {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cir-tabs__t {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cir-tabs__t:hover {
+  color: #ffffff;
+}
+
+.cir-tabs__r:checked + .cir-tabs__t {
+  background: var(--brand-accent, #38bdf8);
+  color: #06121c;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.2),
+    0 8px 18px -10px rgba(56, 189, 248, 0.6);
+}
+
+.cir-tabs__r:focus-visible + .cir-tabs__t {
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.32);
+}
