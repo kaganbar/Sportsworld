@@ -1,42 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
-
-import PageShell from "@/components/page-shell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useLang } from "@/lib/i18n";
 
-// Next.js's App Router error boundary for this segment — without it, an
-// unhandled render error anywhere in the app falls through to Next's own
-// default error overlay (or a blank screen in production), same gap
-// not-found.tsx just fixed for unmatched routes. `reset` re-renders the
-// segment without a full page reload, per Next's error.tsx contract.
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function Error({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const { t } = useLang();
-
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
-
   return (
-    <PageShell maxWidth="max-w-2xl">
-      <div className="flex flex-col items-center gap-6 py-10 text-center">
-        <Card variant="glass" className="w-full">
-          <CardContent className="flex flex-col items-center gap-4 p-10">
-            <div className="text-5xl">⚠️</div>
-            <h1 className="text-2xl font-bold leading-snug text-white">{t("errorTitle")}</h1>
-            <p className="leading-relaxed text-white/70">{t("errorBody")}</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button onClick={reset}>{t("tryAgain")}</Button>
-              <Button variant="outline" asChild>
-                <Link href="/">{t("goHome")}</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </PageShell>
+    <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-6 text-center">
+      <h1 className="font-display text-3xl tracking-wide text-[color:var(--chalk)]">
+        {t("errorTitle")}
+      </h1>
+      <p className="max-w-md text-[color:var(--chalk-dim)]">{t("errorBody")}</p>
+      <button
+        type="button"
+        onClick={reset}
+        className="mt-2 rounded-full bg-[color:var(--brand-accent)] px-6 py-2.5 text-sm font-bold text-[#06140c] transition-opacity hover:opacity-90"
+      >
+        {t("tryAgain")}
+      </button>
+    </main>
   );
 }

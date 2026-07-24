@@ -1,10 +1,10 @@
-import VolleyballGamePage from "./client";
+import { TeamGameDetail } from "@/components/team-game-detail";
 
-// See app/baseball/[competition]/page.tsx's comment for the full reasoning.
+// See app/football/games/[id]/page.tsx for why this placeholder exists.
 export function generateStaticParams() {
   return [{ id: "placeholder" }];
 }
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <VolleyballGamePage params={params} />;
+export default function VolleyballGamePage({ params }: { params: { id: string } }) {
+  return <TeamGameDetail sport="volleyball" id={params.id} />;
 }

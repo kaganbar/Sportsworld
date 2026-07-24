@@ -1,32 +1,23 @@
 "use client";
 
 import Link from "next/link";
-
-import PageShell from "@/components/page-shell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useLang } from "@/lib/i18n";
 
-// Next.js renders this for any unmatched route instead of its bare,
-// unstyled default ("404: This page could not be found.") — that default
-// ignores the app's Hebrew/RTL default language and glass-panel design
-// system entirely, unlike every other empty/error state in the app.
 export default function NotFound() {
   const { t } = useLang();
   return (
-    <PageShell maxWidth="max-w-2xl">
-      <div className="flex flex-col items-center gap-6 py-10 text-center">
-        <Card variant="glass" className="w-full">
-          <CardContent className="flex flex-col items-center gap-4 p-10">
-            <div className="text-5xl">🧭</div>
-            <h1 className="text-2xl font-bold leading-snug text-white">{t("notFoundTitle")}</h1>
-            <p className="leading-relaxed text-white/70">{t("notFoundBody")}</p>
-            <Button asChild>
-              <Link href="/">{t("goHome")}</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </PageShell>
+    <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-6 text-center">
+      <p className="font-display text-7xl text-[color:var(--brand-accent)]">404</p>
+      <h1 className="font-display text-3xl tracking-wide text-[color:var(--chalk)]">
+        {t("notFoundTitle")}
+      </h1>
+      <p className="max-w-md text-[color:var(--chalk-dim)]">{t("notFoundBody")}</p>
+      <Link
+        href="/"
+        className="mt-2 rounded-full bg-[color:var(--brand-accent)] px-6 py-2.5 text-sm font-bold text-[#06140c] transition-opacity hover:opacity-90"
+      >
+        {t("goHome")}
+      </Link>
+    </main>
   );
 }

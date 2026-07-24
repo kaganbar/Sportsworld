@@ -1,45 +1,79 @@
 "use client";
 
 import Link from "next/link";
-
-import { useFadeUpReveal } from "@/hooks/useFadeUpReveal";
-import { TKey } from "@/lib/i18n";
+import { useState } from "react";
 import { TennisMatch } from "@/lib/api";
+import { useFadeUpReveal } from "@/hooks/useFadeUpReveal";
+import { useLiveGame } from "@/hooks/useLiveGame";
+import { useLang } from "@/lib/i18n";
 
-function startTime(iso: string) {
+/** HH:MM in the viewer's locale, from an ISO start_time string. */
+function clockTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// Tennis's list-row card — shared by the top-level matches list and now the
-// competition hub's Live/Upcoming tabs. Unlike football/basketball's
-// GameCard, no live-score WebSocket at list level (matches existing
-// behavior — live ticking is only wired on the tennis detail page). Same
-// glass row layout/status treatment as GameCard for a consistent design
-// language across sports (per the redesign brief).
-export default function MatchCard({ match, t }: { match: TennisMatch; t: (key: TKey) => string }) {
-  const isLive = match.status === "live";
-  const isFinished = match.status === "finished";
-  const statusLabel = isLive ? t("liveNow") : isFinished ? t("statusFinished") : startTime(match.start_time);
-  const statusColorVar = isLive ? "var(--status-live)" : isFinished ? "var(--status-finished)" : "var(--status-upcoming)";
-  const revealRef = useFadeUpReveal<HTMLDivElement>();
+/**
+ * A single tennis match card (player vs player). Tennis carries no list-level
+ * score, so this shows tournament/round + status/time only, and marks the
+ * winner once finished. Links to the tennis match detail route.
+ */
+export function MatchCard({ match: base }: { match: TennisMatch }) {
+  const { t } = useLang();
+
+  // Tennis ticks only carry set games + status (no winner_id); overlay status
+  // so a live match visibly flips to finished. The winner arrives on the next
+  // section poll.
+  const [status, setStatus] = useState<TennisMatch["status"] | null>(null);
+  const match: TennisMatch = status ? { ...base, status } : base;
+  const live = match.status === "live";
+  const finished = match.status === "finished";
+
+  useLiveGame(live ? `/ws/tennis/${match.id}/` : null, (p) => setStatus(p.status));
+
+  const reveal = useFadeUpReveal<HTMLAnchorElement>();
+
+  const PlayerRow = ({ id, name }: { id: number; name: string }) => {
+    const won = finished && match.winner_id === id;
+    return (
+      <div className="flex items-center gap-2">
+        <span
+          className={`truncate text-sm ${won ? "font-bold text-[color:var(--chalk)]" : "font-medium text-[color:var(--chalk-dim)]"}`}
+        >
+          {name}
+        </span>
+        {won && <span className="text-xs text-[color:var(--brand-accent)]">✓</span>}
+      </div>
+    );
+  };
 
   return (
-    <div ref={revealRef} className="fade-up">
-      <Link href={`/tennis/matches/${match.id}`}>
-        <div className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-[20px] p-5 transition duration-200 hover:-translate-y-1 hover:border-[var(--brand-accent)]/40">
-          <div className="flex min-w-[260px] flex-1 items-center gap-4">
-            <span className="flex-1 text-end text-[15px] font-bold text-white">{match.player1.name}</span>
-            <span dir="ltr" className="min-w-[64px] rounded-lg bg-white/10 px-3 py-1.5 text-center text-sm font-extrabold text-white">
-              vs
-            </span>
-            <span className="flex-1 text-start text-[15px] font-bold text-white">{match.player2.name}</span>
-          </div>
-          <div className="flex min-w-[120px] items-center justify-end gap-2 text-sm font-semibold" style={{ color: statusColorVar }}>
-            {isLive && <span className="live-dot h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--status-live)]" />}
-            {statusLabel}
-          </div>
-        </div>
-      </Link>
-    </div>
+    <Link
+      ref={reveal}
+      href={`/tennis/matches/${match.id}`}
+      className="fade-up group flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-all hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.06]"
+    >
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="truncate text-[color:var(--chalk-dim)]">
+          {match.tournament} · {match.round}
+        </span>
+        {live ? (
+          <span className="flex items-center gap-1.5 font-semibold text-red-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+            {t("liveNow")}
+          </span>
+        ) : finished ? (
+          <span className="font-medium text-[color:var(--chalk-dim)]">{t("statusFinished")}</span>
+        ) : (
+          <span className="font-medium text-[color:var(--chalk)]" dir="ltr">
+            {clockTime(match.start_time)}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <PlayerRow id={match.player1.id} name={match.player1.name} />
+        <PlayerRow id={match.player2.id} name={match.player2.name} />
+      </div>
+    </Link>
   );
 }

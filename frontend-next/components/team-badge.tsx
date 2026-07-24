@@ -1,47 +1,54 @@
-// Small team badge used anywhere a team name is shown (game cards,
-// standings tables, and — once the top-scorers table lands — there too):
-// renders the backend's data-URI SVG monogram logo when present, falling
-// back to a colored initials circle so the UI never breaks before the
-// backend/reseed adding `logo_url` actually lands (or for any team that
-// slips through without one).
-function initials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-}
+import { Team } from "@/lib/api";
 
-export default function TeamBadge({
-  name,
-  logoUrl,
-  color,
-  size = 24,
-}: {
-  name: string;
-  logoUrl?: string | null;
-  color?: string;
-  size?: number;
-}) {
-  const style = { width: size, height: size };
+/**
+ * Team crest. Uses the backend-provided logo_url (a data: URI monogram) when
+ * present, otherwise falls back to a colored disc with the team's initials
+ * keyed on its primary_color — so every team renders something on-brand even
+ * before logo enrichment lands (see the Team.logo_url note in lib/api.ts).
+ */
+export function TeamBadge({ team, size = 40 }: { team: Team; size?: number }) {
+  const initials = (team.short_name || team.name)
+    .slice(0, 3)
+    .toUpperCase();
 
-  if (logoUrl) {
+  if (team.logo_url) {
+    // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
-        src={logoUrl}
+        src={team.logo_url}
         alt=""
-        style={style}
-        className="shrink-0 rounded-full bg-white/5 object-cover"
+        width={size}
+        height={size}
+        className="shrink-0 rounded-full object-contain"
       />
     );
   }
 
   return (
     <span
-      aria-hidden="true"
-      style={{ ...style, backgroundColor: color || "var(--brand-accent)", fontSize: size * 0.4 }}
-      className="flex shrink-0 items-center justify-center rounded-full font-bold text-[#06121c]"
+      aria-hidden
+      className="grid shrink-0 place-items-center rounded-full font-bold text-white ring-1 ring-inset ring-white/15"
+      style={{
+        width: size,
+        height: size,
+        background: team.primary_color || "#334155",
+        fontSize: size * 0.32,
+        // Dark text on very light crests for legibility.
+        color: isLight(team.primary_color) ? "#0a1f14" : "#ffffff",
+      }}
     >
-      {initials(name)}
+      {initials}
     </span>
   );
+}
+
+function isLight(hex?: string): boolean {
+  if (!hex) return false;
+  const m = hex.replace("#", "");
+  if (m.length < 6) return false;
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  // Perceived luminance.
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.7;
 }

@@ -1,12 +1,5 @@
-"use client";
+import { SportLanding } from "@/components/sport-landing";
 
-import ThemeLayout from "@/components/theme-layout";
-import CompetitionPicker from "@/components/competition-picker";
-
-export default function FootballGames() {
-  return (
-    <ThemeLayout sport="football">
-      <CompetitionPicker sport="football" basePath="/football" />
-    </ThemeLayout>
-  );
+export default function FootballPage() {
+  return <SportLanding sport="football" />;
 }

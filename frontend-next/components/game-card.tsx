@@ -1,106 +1,111 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-
-import { useLiveGame } from "@/hooks/useLiveGame";
-import { useFadeUpReveal } from "@/hooks/useFadeUpReveal";
-import TeamBadge from "@/components/team-badge";
-import SimulatedBadge from "@/components/simulated-badge";
-import { TKey } from "@/lib/i18n";
+import { useState } from "react";
 import { Game } from "@/lib/api";
+import { useFadeUpReveal } from "@/hooks/useFadeUpReveal";
+import { useLiveGame } from "@/hooks/useLiveGame";
+import { useLang } from "@/lib/i18n";
+import { SportKey, sportsTheme } from "@/theme/sportsTheme";
+import { TeamBadge } from "./team-badge";
 
-function timeOf(iso: string) {
+type TeamSportKey = Exclude<SportKey, "tennis">;
+
+/** The mutable fields a live tick overlays onto a Game (see SimulatedTickerService). */
+interface GameTick {
+  home_score?: number;
+  away_score?: number;
+  minute?: number;
+  status?: Game["status"];
+}
+
+/** HH:MM in the viewer's locale, from an ISO kickoff string. */
+function clockTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// Shared by every team sport's (football/basketball/baseball/volleyball)
-// game lists (detail pages, and now the competition hub's Live/Upcoming
-// tabs) — all four share the same `Game` shape, differing only in the
-// WebSocket route prefix and detail route segment.
-//
-// Row layout (home — score/time pill — away — status pill) and glass
-// treatment match the design brief's Matches list spec; status color/label
-// mirrors the brief's statusInfo() helper.
-export default function GameCard({
-  game,
-  sport,
-  t,
-}: {
-  game: Game;
-  sport: "football" | "basketball" | "baseball" | "volleyball";
-  t: (key: TKey) => string;
-}) {
-  const [live, setLive] = useState(game);
-  useEffect(() => setLive(game), [game]);
-  const revealRef = useFadeUpReveal<HTMLDivElement>();
+/**
+ * A single fixture card for a team sport (football/basketball/baseball/
+ * volleyball). Shows both crests, names, and either a kickoff time (scheduled),
+ * a live minute + score, or a full-time score. Links to the match detail route.
+ *
+ * The numeric score pair is wrapped in dir="ltr" so the home:away order never
+ * visually swaps under RTL — the bidi bug documented in CLAUDE.md.
+ */
+export function GameCard({ sport, game: base }: { sport: TeamSportKey; game: Game }) {
+  const { t } = useLang();
+  const accent = sportsTheme[sport].accent;
 
-  useLiveGame(
-    game.status === "live" ? `/ws/games/${sport}/${game.id}/` : null,
-    (payload) =>
-      setLive((prev) => ({
-        ...prev,
-        home_score: payload.home_score,
-        away_score: payload.away_score,
-        minute: payload.minute ?? prev.minute,
-        status: payload.status ?? prev.status,
-      })),
-  );
+  // Overlay real-time ticks on top of the polled prop. The prop still refreshes
+  // (the section polls, and catches scheduled→live transitions the socket
+  // can't); the socket delivers second-by-second score/minute while live.
+  const [tick, setTick] = useState<GameTick | null>(null);
+  const game: Game = tick ? { ...base, ...tick } : base;
 
-  const isLive = live.status === "live";
-  const isFinished = live.status === "finished";
-  const statusLabel = isLive
-    ? `${t("liveNow")}${live.minute != null ? ` · ${live.minute}'` : ""}`
-    : isFinished
-      ? t("statusFinished")
-      : timeOf(live.kickoff);
-  const statusColorVar = isLive ? "var(--status-live)" : isFinished ? "var(--status-finished)" : "var(--status-upcoming)";
+  const live = game.status === "live";
+  const finished = game.status === "finished";
+  const hasScore = game.home_score !== null && game.away_score !== null;
 
-  // Score display has no visual feedback of its own when a goal lands — it
-  // just snaps to the new number. Remounting the pill on a key derived from
-  // both scores (rather than a separate "did it change" boolean + timer)
-  // gets the enter animation for free from framer-motion's initial/animate
-  // diffing: whenever either score changes, React sees a new key, treats it
-  // as a fresh element, and plays `initial` -> `animate` once more.
-  const scoreKey = `${live.home_score}-${live.away_score}`;
+  useLiveGame(live ? `/ws/games/${sport}/${game.id}/` : null, (p) => {
+    const next: GameTick = { home_score: p.home_score, away_score: p.away_score, status: p.status };
+    // Only football ticks carry a minute; don't clobber the prop's null with
+    // undefined for the other sports (would render "undefined'").
+    if (typeof p.minute === "number") next.minute = p.minute;
+    setTick(next);
+  });
+
+  const reveal = useFadeUpReveal<HTMLAnchorElement>();
 
   return (
-    <div ref={revealRef} className="fade-up">
-      <Link href={`/${sport}/games/${live.id}`}>
-        <motion.div
-          className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-[20px] p-5 transition-colors duration-200 hover:border-[var(--brand-accent)]/40"
-          whileHover={{ y: -4 }}
-          whileTap={{ scale: 0.985 }}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
-        >
-          <div className="flex min-w-[260px] flex-1 items-center gap-4">
-            <span className="flex flex-1 items-center justify-end gap-2">
-              <span className="text-end text-[15px] font-bold text-white">{live.home_team.name}</span>
-              <TeamBadge name={live.home_team.name} logoUrl={live.home_team.logo_url} color={live.home_team.primary_color} size={22} />
-            </span>
-            <motion.span
-              key={scoreKey}
-              dir="ltr"
-              initial={{ scale: 1.32, backgroundColor: "rgba(56,189,248,0.5)" }}
-              animate={{ scale: 1, backgroundColor: "rgba(255,255,255,0.1)" }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="min-w-[64px] rounded-lg px-3 py-1.5 text-center text-lg font-extrabold text-white"
-            >
-              {live.status === "scheduled" ? timeOf(live.kickoff) : `${live.home_score ?? "-"} - ${live.away_score ?? "-"}`}
-            </motion.span>
-            <span className="flex flex-1 items-center justify-start gap-2">
-              <TeamBadge name={live.away_team.name} logoUrl={live.away_team.logo_url} color={live.away_team.primary_color} size={22} />
-              <span className="text-start text-[15px] font-bold text-white">{live.away_team.name}</span>
-            </span>
+    <Link
+      ref={reveal}
+      href={`/${sport}/games/${game.id}`}
+      className="fade-up group flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-all hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.06]"
+    >
+      {/* Top row: competition + status */}
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="truncate text-[color:var(--chalk-dim)]">{game.competition}</span>
+        {live ? (
+          <span className="flex items-center gap-1.5 font-semibold text-red-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+            {game.minute !== null ? `${game.minute}'` : t("liveNow")}
+          </span>
+        ) : finished ? (
+          <span className="font-medium text-[color:var(--chalk-dim)]">{t("statusFinished")}</span>
+        ) : (
+          <span className="font-medium text-[color:var(--chalk)]" dir="ltr">
+            {clockTime(game.kickoff)}
+          </span>
+        )}
+      </div>
+
+      {/* Teams + score */}
+      <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <TeamRow team={game.home_team} />
+          <TeamRow team={game.away_team} />
+        </div>
+
+        {(live || finished) && hasScore && (
+          <div
+            dir="ltr"
+            className="flex flex-col items-center gap-2 px-2 font-display text-2xl leading-none"
+            style={{ color: live ? accent : "var(--chalk)" }}
+          >
+            <span>{game.home_score}</span>
+            <span>{game.away_score}</span>
           </div>
-          <div className="flex min-w-[120px] items-center justify-end gap-2 text-sm font-semibold" style={{ color: statusColorVar }}>
-            {live.is_real === false && <SimulatedBadge />}
-            {isLive && <span className="live-dot h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--status-live)]" />}
-            {statusLabel}
-          </div>
-        </motion.div>
-      </Link>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+function TeamRow({ team }: { team: Game["home_team"] }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <TeamBadge team={team} size={28} />
+      <span className="truncate text-sm font-medium text-[color:var(--chalk)]">{team.name}</span>
     </div>
   );
 }
