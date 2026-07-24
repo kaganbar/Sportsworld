@@ -1,12 +1,10 @@
-import TennisPlayerProfile from "./client";
+import { TennisPlayerProfile } from "@/components/tennis-player-profile";
 
-// See app/baseball/[competition]/page.tsx's comment for why this Server
-// Component wrapper exists (generateStaticParams for the Tauri static
-// export build).
+// See app/football/games/[id]/page.tsx for why this placeholder exists.
 export function generateStaticParams() {
   return [{ id: "placeholder" }];
 }
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <TennisPlayerProfile params={params} />;
+export default function TennisPlayerPage({ params }: { params: { id: string } }) {
+  return <TennisPlayerProfile id={params.id} />;
 }

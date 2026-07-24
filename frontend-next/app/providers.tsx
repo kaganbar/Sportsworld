@@ -4,17 +4,22 @@ import { ReactNode } from "react";
 import { LanguageProvider } from "@/lib/i18n";
 import { SidebarProvider } from "@/lib/sidebar-state";
 import { PreferencesProvider } from "@/lib/preferences";
+import { AuthProvider } from "@/lib/auth-context";
 
-// Root layout.tsx is a Server Component by default, but LanguageProvider/
-// SidebarProvider/PreferencesProvider touch localStorage/document
-// (client-only) — this thin wrapper is the standard Next.js App Router
-// pattern for mounting client context providers from a server layout.
+/**
+ * Client-side context providers wrapped around the whole app. Kept as its own
+ * client component so app/layout.tsx can stay a server component (needed for
+ * next/font). Both providers are preserved lib/ code reused as-is:
+ * LanguageProvider (i18n + RTL) and SidebarProvider (collapse/mobile state).
+ */
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <LanguageProvider>
-      <SidebarProvider>
-        <PreferencesProvider>{children}</PreferencesProvider>
-      </SidebarProvider>
+      <AuthProvider>
+        <PreferencesProvider>
+          <SidebarProvider>{children}</SidebarProvider>
+        </PreferencesProvider>
+      </AuthProvider>
     </LanguageProvider>
   );
 }

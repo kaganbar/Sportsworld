@@ -17,6 +17,7 @@ frontend/dist/
 frontend/vite.config.js
 frontend/vite.config.d.ts
 frontend-next/.next/
+frontend-next/.next-build/
 frontend-next/next-env.d.ts
 frontend-next/out/
 

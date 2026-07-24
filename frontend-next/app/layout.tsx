@@ -1,66 +1,51 @@
 import type { Metadata } from "next";
-import { Rubik } from "next/font/google";
-import dynamic from "next/dynamic";
-import { cookies } from "next/headers";
-import "./globals.css";
+import { Anton, Rubik } from "next/font/google";
 import { Providers } from "./providers";
-import { AppSidebar, MobileTopBar } from "@/components/app-sidebar";
-import SportTransition from "@/components/sport-transition";
-import ScrollProgress from "@/components/scroll-progress";
-import AmbientGlow from "@/components/ambient-glow";
-import ParallaxFallback from "@/components/parallax-fallback";
+import { AppShell } from "@/components/app-shell";
+import "./globals.css";
 
-// next/dynamic with ssr:false is the actual "client-only, never rendered
-// on the server" boundary in Next.js — PersistentWorldCanvas touches
-// `document`/WebGL at call time. Mounted ONCE here (not per-page) so the
-// 3D world persists across navigation — see three/PersistentWorld.tsx.
-const PersistentWorldCanvas = dynamic(() => import("@/three/PersistentWorldCanvas"), { ssr: false });
+/**
+ * Anton — condensed, heavy display face for the SportsWorld wordmark only.
+ * Latin-only (the brand name stays Latin in both languages). Bound to
+ * --font-anton, consumed by tailwind's `font-display` + theme/tokens.ts.
+ */
+const anton = Anton({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-anton",
+  display: "swap",
+});
 
-// One family, used consistently, rather than a font-pairing gimmick — Rubik
-// has genuine Hebrew glyph support (this app is RTL/Hebrew-first) and a
-// modern geometric feel that reads as premium at both display and body sizes.
+/**
+ * Rubik — the humanist sans for all UI/body text. Chosen over a Latin-only
+ * face because it ships full Hebrew glyph coverage, so the RTL/Hebrew-default
+ * UI renders in one consistent typeface. Bound to --font-rubik.
+ */
 const rubik = Rubik({
   subsets: ["latin", "hebrew"],
-  weight: ["400", "500", "600", "700"],
   variable: "--font-rubik",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "SportsWorld",
-  description: "AI-powered sports platform",
+  description: "Pick a sport. Get today's games and AI match analysis.",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
-  // Read on the server so the very first paint already has the right
-  // lang/dir — LanguageProvider defaults to "he" client-side too, and
-  // mirrors this same cookie on every change (see lib/i18n.tsx), so the
-  // two never disagree after the first language switch.
-  const cookieLang = (await cookies()).get("lang")?.value;
-  const lang = cookieLang === "en" ? "en" : "he";
-
+}) {
+  // Static "he"/"rtl" on the server + first client render. The preserved
+  // LanguageProvider (lib/i18n.tsx) flips document.documentElement.dir/lang on
+  // mount for a persisted "en" — its own documented hydration strategy, and it
+  // keeps the Tauri static export working (cookies() would break output:export).
   return (
-    <html lang={lang} dir={lang === "he" ? "rtl" : "ltr"} className={rubik.variable}>
-      <body className="bg-neutral-950 text-white">
+    <html lang="he" dir="rtl" className={`${anton.variable} ${rubik.variable}`}>
+      <body>
         <Providers>
-          <ScrollProgress />
-          <ParallaxFallback />
-          <PersistentWorldCanvas />
-          <AmbientGlow />
-          {/* Shared scrim — previously duplicated per-page in
-              ThemeLayout/PageShell, now one instance for the whole
-              persistent world, same darkening-for-readability role. */}
-          <div className="pointer-events-none fixed inset-0 -z-[5] bg-gradient-to-b from-black/30 via-black/10 to-black/35 backdrop-blur-[2px]" />
-          <div className="flex min-h-screen">
-            <AppSidebar />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <MobileTopBar />
-              <SportTransition>{children}</SportTransition>
-            </div>
-          </div>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

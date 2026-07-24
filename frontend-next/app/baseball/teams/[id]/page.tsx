@@ -1,10 +1,10 @@
-import BaseballTeamRoster from "./client";
+import { TeamRoster } from "@/components/team-roster";
 
-// See app/baseball/[competition]/page.tsx's comment for the full reasoning.
+// See app/football/games/[id]/page.tsx for why this placeholder exists.
 export function generateStaticParams() {
   return [{ id: "placeholder" }];
 }
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <BaseballTeamRoster params={params} />;
+export default function BaseballTeamPage({ params }: { params: { id: string } }) {
+  return <TeamRoster id={params.id} />;
 }

@@ -1,12 +1,12 @@
-import GameDetail from "./client";
+import { TeamGameDetail } from "@/components/team-game-detail";
 
-// See app/baseball/[competition]/page.tsx's comment for why this Server
-// Component wrapper exists (generateStaticParams for the Tauri static
-// export build).
+// A single placeholder param satisfies `output: export` (the Tauri static
+// build); real IDs resolve client-side at runtime — the detail component
+// fetches by id, reached via in-app navigation. Mirrors the pre-rebuild pattern.
 export function generateStaticParams() {
   return [{ id: "placeholder" }];
 }
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <GameDetail params={params} />;
+export default function FootballGamePage({ params }: { params: { id: string } }) {
+  return <TeamGameDetail sport="football" id={params.id} />;
 }
